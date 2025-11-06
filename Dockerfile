@@ -38,13 +38,13 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=10000
 
-# Expose port
-EXPOSE $PORT
+# Expose port (use default, Render will override PORT env var)
+EXPOSE 10000
 
-# Health check
+# Health check (PORT will be read from env at runtime)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:$PORT/health')" || exit 1
+    CMD python -c "import os, requests; port = os.environ.get('PORT', '10000'); requests.get(f'http://localhost:{port}/health')" || exit 1
 
-# Run the application
-CMD ["gunicorn", "ai_trading_bot.health:app", "--bind", "0.0.0.0:${PORT}", "--workers", "1", "--threads", "2", "--timeout", "120"]
+# Run the application (use shell form to expand PORT variable)
+CMD gunicorn ai_trading_bot.health:app --bind 0.0.0.0:${PORT} --workers 1 --threads 2 --timeout 120
 
