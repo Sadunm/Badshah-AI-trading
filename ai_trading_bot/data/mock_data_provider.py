@@ -28,6 +28,7 @@ class MockDataProvider:
         self.symbols = symbols or ['BTCUSDT', 'ETHUSDT', 'BNBUSDT']
         self.update_interval = update_interval
         self.is_running = False
+        self.is_connected = False  # Compatibility with WebSocketClient interface
         self.thread = None
         self.callbacks = {
             'kline': [],
@@ -61,6 +62,7 @@ class MockDataProvider:
             return True
         
         self.is_running = True
+        self.is_connected = True  # Mock provider is always "connected"
         self.thread = threading.Thread(target=self._generate_data, daemon=True)
         self.thread.start()
         logger.info("Mock data provider started")
@@ -69,9 +71,24 @@ class MockDataProvider:
     def stop(self):
         """Stop generating mock data."""
         self.is_running = False
+        self.is_connected = False
         if self.thread:
             self.thread.join(timeout=2)
         logger.info("Mock data provider stopped")
+    
+    def get_price(self, symbol: str) -> Optional[float]:
+        """Get current price for symbol (compatibility with WebSocketClient interface)."""
+        return self.current_prices.get(symbol)
+    
+    def get_orderbook(self, symbol: str) -> Optional[Dict]:
+        """Get orderbook for symbol (compatibility with WebSocketClient interface)."""
+        # Return None for now - can be implemented if needed
+        return None
+    
+    def get_klines(self, symbol: str, limit: int = 200) -> List[Dict]:
+        """Get klines for symbol (compatibility with WebSocketClient interface)."""
+        # Return empty list for now - can be implemented if needed
+        return []
     
     def on_kline(self, callback: Callable):
         """Register callback for kline updates."""

@@ -225,16 +225,44 @@ class TradingBot:
             
             # Connect WebSocket
             logger.info("Connecting to WebSocket...")
-            if not self.websocket_client.start():
-                logger.error("Failed to connect to WebSocket")
-                return
+            websocket_started = self.websocket_client.start()
             
-            # Wait for connection
-            time.sleep(3)
+            # Wait for connection with timeout
+            max_wait_time = 60  # Wait up to 60 seconds
+            wait_interval = 2
+            waited = 0
+            
+            while waited < max_wait_time:
+                if self.websocket_client.is_connected:
+                    logger.info("WebSocket connected successfully")
+                    break
+                if not self.websocket_client.is_running:
+                    # Connection failed completely, try fallback to mock data
+                    logger.warning("Binance connection failed. Attempting fallback to mock data...")
+                    if self._fallback_to_mock_data():
+                        logger.info("Successfully switched to mock data provider")
+                        break
+                    else:
+                        logger.error("Failed to initialize mock data fallback")
+                        return
+                time.sleep(wait_interval)
+                waited += wait_interval
+            
+            # Final check: if WebSocketClient failed to connect after timeout, use mock fallback
+            if isinstance(self.websocket_client, WebSocketClient) and not self.websocket_client.is_connected:
+                logger.warning("WebSocket connection timeout. Switching to mock data...")
+                if self._fallback_to_mock_data():
+                    logger.info("Successfully switched to mock data provider")
+                else:
+                    logger.error("Failed to initialize mock data fallback")
+                    return
             
             # Fetch historical data
             logger.info("Fetching historical data...")
-            self.data_manager.fetch_all_historical_data()
+            try:
+                self.data_manager.fetch_all_historical_data()
+            except Exception as e:
+                logger.warning(f"Could not fetch historical data: {e}. Continuing with available data...")
             
             # Start monitoring thread
             self.is_running = True
@@ -251,6 +279,53 @@ class TradingBot:
         except Exception as e:
             logger.error(f"Error starting trading bot: {e}", exc_info=True)
             self.stop()
+    
+    def _fallback_to_mock_data(self) -> bool:
+        """Fallback to mock data provider when real exchange connection fails."""
+        try:
+            logger.info("Initializing mock data provider as fallback...")
+            
+            # Stop current WebSocket client
+            if hasattr(self, 'websocket_client') and self.websocket_client:
+                try:
+                    self.websocket_client.stop()
+                except Exception:
+                    pass
+            
+            # Import mock data provider
+            try:
+                from .data.mock_data_provider import MockDataProvider
+            except ImportError:
+                from ai_trading_bot.data.mock_data_provider import MockDataProvider
+            
+            # Get symbols from config
+            data_config = self.config.get("data", {})
+            symbols = data_config.get("symbols", ["BTCUSDT"])
+            
+            # Initialize mock data provider
+            self.websocket_client = MockDataProvider(symbols, update_interval=1.0)
+            
+            # Update data manager to use mock URL
+            self.data_manager = DataManager(
+                "mock://localhost",
+                symbols,
+                data_config.get("kline_interval", "5m"),
+                data_config.get("kline_limit", 200)
+            )
+            
+            # Set up mock data callbacks
+            self.websocket_client.on_kline(self._on_kline_update)
+            self.websocket_client.on_ticker(self._on_price_update)
+            
+            # Start mock data provider
+            self.websocket_client.start()
+            
+            logger.info("Mock data provider initialized and started")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error initializing mock data fallback: {e}", exc_info=True)
+            return False
     
     def stop(self) -> None:
         """Stop the trading bot gracefully."""
