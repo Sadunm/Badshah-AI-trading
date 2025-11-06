@@ -140,12 +140,16 @@ def calculate_macd(prices: List[float], fast: int = 12, slow: int = 26, signal: 
         start_idx = slow + signal - 2
         valid_signal = signal_line[signal - 1:]  # Extract valid portion
         
-        # Ensure sizes match
-        if len(valid_signal) <= len(macd) - start_idx:
-            signal_padded[start_idx:start_idx + len(valid_signal)] = valid_signal
+        # Ensure sizes match - calculate available space
+        available_space = len(macd) - start_idx
+        valid_length = len(valid_signal)
+        
+        if valid_length <= available_space:
+            # Perfect fit or smaller - place all valid values
+            signal_padded[start_idx:start_idx + valid_length] = valid_signal
         else:
-            # If sizes don't match, truncate to fit
-            signal_padded[start_idx:] = valid_signal[:len(macd) - start_idx]
+            # Valid signal is larger - truncate to fit
+            signal_padded[start_idx:] = valid_signal[:available_space]
         
         # Histogram
         histogram = macd - signal_padded

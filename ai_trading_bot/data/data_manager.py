@@ -183,7 +183,8 @@ class DataManager:
                             continue
                         
                         # Parse Bybit format
-                        start_time = int(item[0])
+                        # startTime might be float string, convert to float first then int
+                        start_time = int(float(item[0]))
                         open_price = float(item[1])
                         high_price = float(item[2])
                         low_price = float(item[3])

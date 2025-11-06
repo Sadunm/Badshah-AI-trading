@@ -209,15 +209,21 @@ class BybitWebSocketClient:
             
             if confirm:  # Only process closed candles
                 try:
+                    # Handle float strings for timestamps
+                    start_val = kline.get("start", 0)
+                    end_val = kline.get("end", 0)
+                    open_time = int(float(start_val)) if start_val else 0
+                    close_time = int(float(end_val)) if end_val else 0
+                    
                     candle = {
-                        "open_time": int(kline.get("start", 0)),
-                        "close_time": int(kline.get("end", 0)),
+                        "open_time": open_time,
+                        "close_time": close_time,
                         "open": float(kline.get("open", 0)),
                         "high": float(kline.get("high", 0)),
                         "low": float(kline.get("low", 0)),
                         "close": float(kline.get("close", 0)),
                         "volume": float(kline.get("volume", 0)),
-                        "trades": int(kline.get("turnover", 0))
+                        "trades": int(float(kline.get("turnover", 0))) if kline.get("turnover") else 0
                     }
                     
                     # Validate candle data
