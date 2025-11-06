@@ -15,7 +15,7 @@ exchange:
 
 trading:
   initial_capital: 10.0
-  paper_trading: true
+  paper_trading: false  # Set to false for REAL trading on Bybit
   max_position_size_pct: 1.0
   max_portfolio_risk_pct: 20.0
 

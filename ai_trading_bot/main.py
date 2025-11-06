@@ -220,7 +220,8 @@ class TradingBot:
             
             # Execution
             self.order_executor = OrderExecutor(
-                trading_config.get("paper_trading", True)
+                paper_trading=trading_config.get("paper_trading", True),
+                exchange_config=exchange_config if not trading_config.get("paper_trading", True) else None
             )
             
             # Trade storage (for persistence)
