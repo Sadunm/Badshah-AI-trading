@@ -30,6 +30,7 @@ app = Flask(__name__)
 bot_running = False
 bot_thread = None
 bot_error = None
+bot_started = False
 
 def start_bot():
     """Start trading bot in background thread."""
@@ -46,6 +47,18 @@ def start_bot():
         print(f"Bot error: {e}")
         traceback.print_exc()
         bot_running = False
+
+# Start bot thread when module is imported (works with gunicorn)
+def ensure_bot_started():
+    """Ensure bot thread is started (only once)."""
+    global bot_thread, bot_started
+    if not bot_started:
+        bot_thread = threading.Thread(target=start_bot, daemon=True)
+        bot_thread.start()
+        bot_started = True
+
+# Start bot when Flask app is created
+ensure_bot_started()
 
 @app.route('/')
 def index():
@@ -82,10 +95,7 @@ def status():
     }, 200
 
 if __name__ == '__main__':
-    # Start bot in background thread
-    bot_thread = threading.Thread(target=start_bot, daemon=True)
-    bot_thread.start()
-    
+    # Bot already started by ensure_bot_started() above
     # Get port from environment or use default
     port = int(os.environ.get('PORT', 10000))
     
