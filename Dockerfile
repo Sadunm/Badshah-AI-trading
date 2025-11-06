@@ -29,7 +29,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
 COPY ai_trading_bot/ /app/ai_trading_bot/
-COPY .python-version /app/.python-version
 
 # Create logs directory
 RUN mkdir -p /app/logs
