@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: badshah-ai-trading-bot
+    restart: unless-stopped
+    ports:
+      - "${PORT:-10000}:${PORT:-10000}"
+    environment:
+      - PORT=${PORT:-10000}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./logs:/app/logs
+      - ./ai_trading_bot/config/config.yaml:/app/ai_trading_bot/config/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:${PORT:-10000}/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+
+networks:
+  trading-network:
+    driver: bridge
+

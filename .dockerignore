@@ -1,0 +1,78 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Data
+historical_data/
+*.json
+*.json.backup
+trades.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+config.local.yaml
+secrets.yaml
+**/api_keys.txt
+**/secrets.txt
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+tests/
+.pytest_cache
+.coverage
+htmlcov/
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Deployment files (not needed in Docker)
+Procfile
+render.yaml
+runtime.txt
+.python-version
+
+# Batch files (Windows specific)
+*.bat
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
