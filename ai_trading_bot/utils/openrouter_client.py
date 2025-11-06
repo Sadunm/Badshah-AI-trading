@@ -43,6 +43,7 @@ class OpenRouterClient:
         self.max_consecutive_errors = 5
         self.last_error_time = 0.0
         self.error_reset_interval = 300.0  # Reset errors after 5 minutes
+        self.auth_error_permanent = False  # Permanent disable for 401 errors
         
         if not self.api_key:
             logger.warning("OPENROUTER_API_KEY not set - AI features will be disabled")
@@ -60,7 +61,19 @@ class OpenRouterClient:
             Returns None if API call fails
         """
         if not self.api_key:
-            logger.warning("OpenRouter API key not available")
+            # Only log once to avoid spam
+            if not hasattr(self, '_api_key_warning_logged'):
+                logger.warning("OpenRouter API key not available - AI signals will be disabled. Set OPENROUTER_API_KEY environment variable to enable AI features.")
+                self._api_key_warning_logged = True
+            return None
+        
+        # Check for permanent auth error (401)
+        if self.auth_error_permanent:
+            # Only log once per hour to avoid spam
+            current_time = time.time()
+            if not hasattr(self, '_auth_error_last_logged') or (current_time - self._auth_error_last_logged) > 3600:
+                logger.warning("OpenRouter API authentication failed (401) - AI features permanently disabled. Please set a valid OPENROUTER_API_KEY.")
+                self._auth_error_last_logged = current_time
             return None
         
         # Check if we should reset error counter (after some time)
@@ -222,10 +235,12 @@ Respond with ONLY the JSON, no additional text."""
                 logger.info(f"OpenRouter API call successful ({elapsed:.2f}s)")
                 return content
             elif response.status_code == 401:
-                # Invalid API key - don't keep trying
-                logger.error(f"OpenRouter API authentication failed (401). Please check your OPENROUTER_API_KEY.")
-                logger.error(f"Response: {response.text[:200]}")
-                # Set consecutive errors to max to prevent further calls
+                # Invalid API key - permanently disable
+                if not self.auth_error_permanent:
+                    logger.error(f"OpenRouter API authentication failed (401). Please check your OPENROUTER_API_KEY.")
+                    logger.error(f"Response: {response.text[:200]}")
+                    logger.error("AI features will be permanently disabled until a valid API key is set.")
+                self.auth_error_permanent = True
                 self.consecutive_errors = self.max_consecutive_errors
                 self.last_error_time = time.time()
                 return None

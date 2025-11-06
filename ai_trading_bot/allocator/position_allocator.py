@@ -86,12 +86,16 @@ class PositionAllocator:
             
             position_size = min(position_size, max_position_size)
             
-            # Minimum position size check
+            # Minimum position size check - adaptive based on capital
             position_value = position_size * entry_price
-            min_position_value = 0.5  # Minimum $0.50 for very small capital
+            
+            # Adaptive minimum: 5% of capital or $0.10, whichever is smaller
+            # For $10 capital: min = $0.10, for $100: min = $0.50
+            min_position_value = min(self.current_capital * 0.05, 0.5)
+            min_position_value = max(min_position_value, 0.10)  # Absolute minimum $0.10
             
             if position_value < min_position_value:
-                logger.debug(f"Position size too small: ${position_value:.2f} < ${min_position_value:.2f} for {signal.get('action', 'UNKNOWN')}")
+                logger.debug(f"Position size too small: ${position_value:.4f} < ${min_position_value:.4f} (capital: ${self.current_capital:.2f}) for {signal.get('action', 'UNKNOWN')}")
                 return None
             
             # Ensure position size is reasonable (not too small due to rounding)
