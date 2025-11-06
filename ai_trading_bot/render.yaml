@@ -1,9 +1,9 @@
 services:
-  - type: worker
+  - type: web
     name: ai-trading-bot
     env: python
     buildCommand: pip install -r ai_trading_bot/requirements.txt
-    startCommand: python -m ai_trading_bot.main
+    startCommand: gunicorn ai_trading_bot.health:app --bind 0.0.0.0:$PORT
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
@@ -11,4 +11,6 @@ services:
         sync: false
       - key: BINANCE_API_SECRET
         sync: false
+      - key: PORT
+        value: "10000"
 
