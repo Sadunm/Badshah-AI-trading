@@ -87,10 +87,19 @@ class PositionAllocator:
             position_size = min(position_size, max_position_size)
             
             # Minimum position size check
-            if position_size * entry_price < 1.0:  # At least $1
+            position_value = position_size * entry_price
+            min_position_value = 0.5  # Minimum $0.50 for very small capital
+            
+            if position_value < min_position_value:
+                logger.debug(f"Position size too small: ${position_value:.2f} < ${min_position_value:.2f} for {signal.get('action', 'UNKNOWN')}")
                 return None
             
-            logger.info(f"Position size calculated: {position_size:.6f} units @ ${entry_price:.2f} = ${position_size * entry_price:.2f}")
+            # Ensure position size is reasonable (not too small due to rounding)
+            if position_size < 0.000001:  # Very small position size
+                logger.debug(f"Position size too small: {position_size:.8f} units")
+                return None
+            
+            logger.info(f"Position size calculated: {position_size:.6f} units @ ${entry_price:.2f} = ${position_value:.2f}")
             
             return position_size
             

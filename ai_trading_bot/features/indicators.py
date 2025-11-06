@@ -121,6 +121,7 @@ def calculate_macd(prices: List[float], fast: int = 12, slow: int = 26, signal: 
         macd = ema_fast - ema_slow
         
         # Signal line (EMA of MACD)
+        # Extract MACD values starting from where both EMAs are valid (slow-1)
         macd_list = macd[slow-1:].tolist()
         signal_line = calculate_ema(macd_list, signal)
         
@@ -128,8 +129,23 @@ def calculate_macd(prices: List[float], fast: int = 12, slow: int = 26, signal: 
             return None
         
         # Pad signal line to match MACD length
+        # signal_line has same length as macd_list, but valid values start from index (signal-1)
+        # We need to extract the valid portion and place it correctly
         signal_padded = np.full_like(macd, np.nan)
-        signal_padded[slow + signal - 2:] = signal_line
+        
+        # Calculate the correct indices
+        # macd_list starts at index (slow-1) of macd
+        # signal_line valid values start at index (signal-1) of signal_line
+        # So in macd array, valid signal starts at: (slow-1) + (signal-1) = slow + signal - 2
+        start_idx = slow + signal - 2
+        valid_signal = signal_line[signal - 1:]  # Extract valid portion
+        
+        # Ensure sizes match
+        if len(valid_signal) <= len(macd) - start_idx:
+            signal_padded[start_idx:start_idx + len(valid_signal)] = valid_signal
+        else:
+            # If sizes don't match, truncate to fit
+            signal_padded[start_idx:] = valid_signal[:len(macd) - start_idx]
         
         # Histogram
         histogram = macd - signal_padded
@@ -476,14 +492,20 @@ def calculate_all_indicators(candles: List[dict]) -> dict:
         indicators["rsi_14"] = safe_get_last(rsi_14, 50.0) if rsi_14 is not None else 50.0
         indicators["rsi_7"] = safe_get_last(rsi_7, 50.0) if rsi_7 is not None else 50.0
         
-        # MACD
-        macd_result = calculate_macd(closes, 12, 26, 9)
-        if macd_result:
-            macd, signal_line, histogram = macd_result
-            indicators["macd"] = safe_get_last(macd, 0.0)
-            indicators["macd_signal"] = safe_get_last(signal_line, 0.0)
-            indicators["macd_histogram"] = safe_get_last(histogram, 0.0)
-        else:
+        # MACD (with error handling)
+        try:
+            macd_result = calculate_macd(closes, 12, 26, 9)
+            if macd_result:
+                macd, signal_line, histogram = macd_result
+                indicators["macd"] = safe_get_last(macd, 0.0)
+                indicators["macd_signal"] = safe_get_last(signal_line, 0.0)
+                indicators["macd_histogram"] = safe_get_last(histogram, 0.0)
+            else:
+                indicators["macd"] = 0.0
+                indicators["macd_signal"] = 0.0
+                indicators["macd_histogram"] = 0.0
+        except Exception as e:
+            logger.warning(f"MACD calculation failed, using defaults: {e}")
             indicators["macd"] = 0.0
             indicators["macd_signal"] = 0.0
             indicators["macd_histogram"] = 0.0

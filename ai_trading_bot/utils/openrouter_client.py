@@ -41,6 +41,8 @@ class OpenRouterClient:
         # Error tracking
         self.consecutive_errors = 0
         self.max_consecutive_errors = 5
+        self.last_error_time = 0.0
+        self.error_reset_interval = 300.0  # Reset errors after 5 minutes
         
         if not self.api_key:
             logger.warning("OPENROUTER_API_KEY not set - AI features will be disabled")
@@ -60,6 +62,12 @@ class OpenRouterClient:
         if not self.api_key:
             logger.warning("OpenRouter API key not available")
             return None
+        
+        # Check if we should reset error counter (after some time)
+        current_time = time.time()
+        if self.consecutive_errors > 0 and (current_time - self.last_error_time) > self.error_reset_interval:
+            logger.info(f"Resetting error counter after {self.error_reset_interval/60:.1f} minutes")
+            self.consecutive_errors = 0
         
         # Check if we've exceeded error threshold
         if self.consecutive_errors >= self.max_consecutive_errors:
@@ -92,13 +100,16 @@ class OpenRouterClient:
                     return signal
                 else:
                     self.consecutive_errors += 1
+                    self.last_error_time = time.time()
                     return None
             else:
                 self.consecutive_errors += 1
+                self.last_error_time = time.time()
                 return None
                 
         except Exception as e:
             self.consecutive_errors += 1
+            self.last_error_time = time.time()
             logger.error(f"Error generating AI signal for {symbol}: {e}", exc_info=True)
             return None
     
@@ -210,8 +221,16 @@ Respond with ONLY the JSON, no additional text."""
                 content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
                 logger.info(f"OpenRouter API call successful ({elapsed:.2f}s)")
                 return content
+            elif response.status_code == 401:
+                # Invalid API key - don't keep trying
+                logger.error(f"OpenRouter API authentication failed (401). Please check your OPENROUTER_API_KEY.")
+                logger.error(f"Response: {response.text[:200]}")
+                # Set consecutive errors to max to prevent further calls
+                self.consecutive_errors = self.max_consecutive_errors
+                self.last_error_time = time.time()
+                return None
             else:
-                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                logger.error(f"OpenRouter API error: {response.status_code} - {response.text[:200]}")
                 return None
                 
         except requests.exceptions.Timeout:
