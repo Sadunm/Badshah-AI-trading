@@ -171,7 +171,10 @@ class TradingBot:
             )
             
             # Trade storage (for persistence)
-            from ..utils.trade_storage import TradeStorage
+            try:
+                from .utils.trade_storage import TradeStorage
+            except ImportError:
+                from ai_trading_bot.utils.trade_storage import TradeStorage
             self.trade_storage = TradeStorage("trades.json")
             
             logger.info("All components initialized")
