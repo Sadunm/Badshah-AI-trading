@@ -1,0 +1,2 @@
+worker: python -m ai_trading_bot.main
+

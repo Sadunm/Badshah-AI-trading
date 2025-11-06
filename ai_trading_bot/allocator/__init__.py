@@ -1,0 +1,2 @@
+"""Position allocator module"""
+
