@@ -5,14 +5,14 @@ openrouter:
   timeout: 30.0
 
 exchange:
-  name: "mock"  # Use mock data provider instead of Binance
+  name: "binance"  # Use real Binance (works in Singapore)
   testnet: true
   trading_type: "spot"
   api_key: "${BINANCE_API_KEY}"
   api_secret: "${BINANCE_API_SECRET}"
   websocket_url: "wss://testnet.binance.vision/ws"
   rest_url: "https://testnet.binance.vision/api"
-  use_mock_data: true  # Enable mock data provider
+  use_mock_data: false  # Use real Binance (Singapore connection works)
 
 trading:
   initial_capital: 10.0
