@@ -16,7 +16,11 @@ if str(parent_dir) not in sys.path:
     sys.path.insert(0, str(parent_dir))
 
 # Change to the directory containing this file
-os.chdir(current_dir)
+try:
+    os.chdir(current_dir)
+except Exception:
+    # If chdir fails, continue anyway (some environments may not allow it)
+    pass
 
 from ai_trading_bot.utils.logger import get_logger
 

@@ -9,21 +9,24 @@ import sys
 from typing import Dict, Optional
 from pathlib import Path
 
-# Ensure proper path resolution for Windows when running as module
-if __name__ == "__main__":
-    # When running as script, ensure we can import the package
-    current_file = Path(__file__).absolute()
-    package_dir = current_file.parent
-    parent_dir = package_dir.parent
-    
-    # Add both directories to path
-    if str(parent_dir) not in sys.path:
-        sys.path.insert(0, str(parent_dir))
-    if str(package_dir) not in sys.path:
-        sys.path.insert(0, str(package_dir))
-    
-    # Change to package directory for relative paths
+# Ensure proper path resolution for Windows/Linux when running as module
+# This works for both direct execution and module execution
+current_file = Path(__file__).absolute()
+package_dir = current_file.parent
+parent_dir = package_dir.parent
+
+# Add both directories to path (works on Windows and Linux)
+if str(parent_dir) not in sys.path:
+    sys.path.insert(0, str(parent_dir))
+if str(package_dir) not in sys.path:
+    sys.path.insert(0, str(package_dir))
+
+# Change to package directory for relative paths (config files, etc.)
+try:
     os.chdir(package_dir)
+except Exception:
+    # If chdir fails, continue anyway (some environments may not allow it)
+    pass
 
 try:
     from .config import load_config

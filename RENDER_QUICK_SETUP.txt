@@ -1,0 +1,42 @@
+========================================
+Render.com Quick Setup - Copy Paste
+========================================
+
+SERVICE TYPE: Background Worker (NOT Web Service!)
+
+SETTINGS:
+---------
+Name: Badshah-AI-trading
+Root Directory: ai_trading_bot
+Build Command: pip install -r ai_trading_bot/requirements.txt
+Start Command: python -m ai_trading_bot.main
+Instance Type: Starter ($7/month) - Recommended
+              OR Free (may sleep)
+
+ENVIRONMENT VARIABLES:
+----------------------
+OPENROUTER_API_KEY = your_openrouter_key
+BINANCE_API_KEY = your_binance_key (optional)
+BINANCE_API_SECRET = your_binance_secret (optional)
+
+========================================
+STEP BY STEP:
+========================================
+
+1. Render Dashboard → New + → Background Worker
+2. Connect: Sadunm / Badshah-AI-trading
+3. Branch: main
+4. Root Directory: ai_trading_bot
+5. Build: pip install -r ai_trading_bot/requirements.txt
+6. Start: python -m ai_trading_bot.main
+7. Instance: Starter ($7/month)
+8. Add Environment Variables
+9. Create Background Worker
+
+========================================
+Repository URL:
+========================================
+https://github.com/Sadunm/Badshah-AI-trading
+
+========================================
+

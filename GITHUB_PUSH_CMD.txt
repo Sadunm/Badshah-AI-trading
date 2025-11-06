@@ -1,0 +1,46 @@
+========================================
+GitHub Push Commands - CMD থেকে run করুন
+========================================
+
+Step 1: Project directory তে যান
+----------------------------------
+cd "C:\Users\Administrator\Desktop\BADSHAI AI TRADING MACHINE"
+
+
+Step 2: Branch name set করুন
+-----------------------------
+git branch -M main
+
+
+Step 3: GitHub এ push করুন
+---------------------------
+git push -u origin main
+
+
+========================================
+NOTE: যদি authentication চায়:
+========================================
+
+Username: Sadunm
+Password: Personal Access Token ব্যবহার করুন (password নয়)
+
+Personal Access Token তৈরি করতে:
+1. https://github.com/settings/tokens এ যান
+2. "Generate new token" → "Generate new token (classic)"
+3. Name: "Trading Bot"
+4. Scopes: ✅ repo (all) select করুন
+5. "Generate token" click করুন
+6. Token copy করুন (একবারই দেখবেন)
+7. এই token টা password হিসেবে use করুন
+
+========================================
+Success হলে দেখবেন:
+========================================
+* [new branch]      main -> main
+branch 'main' set up to track 'origin/main'
+
+========================================
+Your Repository URL:
+========================================
+https://github.com/Sadunm/Badshah-AI-trading
+

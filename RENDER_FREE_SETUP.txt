@@ -1,0 +1,61 @@
+========================================
+Render.com FREE Setup (No Subscription)
+========================================
+
+OPTION: Web Service (Free) - Bot হিসেবে run হবে
+
+SETTINGS:
+---------
+Service Type: Web Service (NOT Background Worker)
+Name: Badshah-AI-trading
+Root Directory: ai_trading_bot
+Build Command: pip install -r ai_trading_bot/requirements.txt
+Start Command: gunicorn ai_trading_bot.health:app --bind 0.0.0.0:$PORT
+Instance Type: Free ($0/month)
+
+ENVIRONMENT VARIABLES:
+----------------------
+OPENROUTER_API_KEY = your_openrouter_key
+BINANCE_API_KEY = your_binance_key (optional)
+BINANCE_API_SECRET = your_binance_secret (optional)
+PORT = 10000 (auto-set by Render)
+
+========================================
+STEP BY STEP (FREE):
+========================================
+
+1. Render Dashboard → New + → Web Service
+2. Connect: Sadunm / Badshah-AI-trading
+3. Branch: main
+4. Root Directory: ai_trading_bot
+5. Build: pip install -r ai_trading_bot/requirements.txt
+6. Start: gunicorn ai_trading_bot.health:app --bind 0.0.0.0:$PORT
+7. Instance: Free ($0/month)
+8. Add Environment Variables
+9. Create Web Service
+
+========================================
+KEEP AWAKE (Optional):
+========================================
+
+Free tier sleep করতে পারে। Solution:
+
+1. UptimeRobot (free) setup করুন
+2. URL: https://your-service.onrender.com/health
+3. Interval: 5 minutes
+4. Bot awake থাকবে!
+
+UptimeRobot: https://uptimerobot.com
+
+========================================
+ALTERNATIVE (Simple - No Flask):
+========================================
+
+If you don't want Flask, use:
+
+Start Command: python -m ai_trading_bot.main
+
+But service may sleep after 15 min.
+
+========================================
+
