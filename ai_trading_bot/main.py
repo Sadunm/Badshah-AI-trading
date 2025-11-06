@@ -97,20 +97,43 @@ class TradingBot:
             data_config = self.config.get("data", {})
             
             symbols = data_config.get("symbols", ["BTCUSDT"])
-            websocket_url = exchange_config.get("websocket_url", "wss://testnet.binance.vision/ws")
-            rest_url = exchange_config.get("rest_url", "https://testnet.binance.vision/api")
+            use_mock = exchange_config.get("use_mock_data", False) or exchange_config.get("name") == "mock"
             
-            self.websocket_client = WebSocketClient(websocket_url, symbols)
-            self.data_manager = DataManager(
-                rest_url,
-                symbols,
-                data_config.get("kline_interval", "5m"),
-                data_config.get("kline_limit", 200)
-            )
-            
-            # Set up WebSocket callbacks
-            self.websocket_client.on_kline_update = self._on_kline_update
-            self.websocket_client.on_price_update = self._on_price_update
+            if use_mock:
+                # Use mock data provider instead of real exchange
+                logger.info("Using mock data provider (no real exchange connection needed)")
+                try:
+                    from .data.mock_data_provider import MockDataProvider
+                except ImportError:
+                    from ai_trading_bot.data.mock_data_provider import MockDataProvider
+                
+                self.websocket_client = MockDataProvider(symbols, update_interval=1.0)
+                self.data_manager = DataManager(
+                    "mock://localhost",  # Mock URL
+                    symbols,
+                    data_config.get("kline_interval", "5m"),
+                    data_config.get("kline_limit", 200)
+                )
+                
+                # Set up mock data callbacks
+                self.websocket_client.on_kline(self._on_kline_update)
+                self.websocket_client.on_ticker(self._on_price_update)
+            else:
+                # Use real exchange (Binance)
+                websocket_url = exchange_config.get("websocket_url", "wss://testnet.binance.vision/ws")
+                rest_url = exchange_config.get("rest_url", "https://testnet.binance.vision/api")
+                
+                self.websocket_client = WebSocketClient(websocket_url, symbols)
+                self.data_manager = DataManager(
+                    rest_url,
+                    symbols,
+                    data_config.get("kline_interval", "5m"),
+                    data_config.get("kline_limit", 200)
+                )
+                
+                # Set up WebSocket callbacks
+                self.websocket_client.on_kline_update = self._on_kline_update
+                self.websocket_client.on_price_update = self._on_price_update
             
             # Strategies
             openrouter_config = self.config.get("openrouter", {})
