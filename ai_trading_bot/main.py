@@ -112,28 +112,58 @@ class TradingBot:
                     "mock://localhost",  # Mock URL
                     symbols,
                     data_config.get("kline_interval", "5m"),
-                    data_config.get("kline_limit", 200)
+                    data_config.get("kline_limit", 200),
+                    exchange="mock"
                 )
                 
                 # Set up mock data callbacks
                 self.websocket_client.on_kline(self._on_kline_update)
                 self.websocket_client.on_ticker(self._on_price_update)
             else:
-                # Use real exchange (Binance)
-                websocket_url = exchange_config.get("websocket_url", "wss://testnet.binance.vision/ws")
-                rest_url = exchange_config.get("rest_url", "https://testnet.binance.vision/api")
+                # Use real exchange (Binance or Bybit)
+                exchange_name = exchange_config.get("name", "binance").lower()
+                websocket_url = exchange_config.get("websocket_url")
+                rest_url = exchange_config.get("rest_url")
                 
-                self.websocket_client = WebSocketClient(websocket_url, symbols)
-                self.data_manager = DataManager(
-                    rest_url,
-                    symbols,
-                    data_config.get("kline_interval", "5m"),
-                    data_config.get("kline_limit", 200)
-                )
+                if not websocket_url or not rest_url:
+                    logger.error(f"{exchange_name} WebSocket or REST URL not configured")
+                    raise ValueError(f"{exchange_name} URLs are required")
                 
-                # Set up WebSocket callbacks
-                self.websocket_client.on_kline_update = self._on_kline_update
-                self.websocket_client.on_price_update = self._on_price_update
+                if exchange_name == "bybit":
+                    # Use Bybit WebSocket client
+                    try:
+                        from .data.bybit_websocket_client import BybitWebSocketClient
+                    except ImportError:
+                        from ai_trading_bot.data.bybit_websocket_client import BybitWebSocketClient
+                    
+                    logger.info("Initializing Bybit WebSocket client")
+                    self.websocket_client = BybitWebSocketClient(websocket_url, symbols)
+                    self.data_manager = DataManager(
+                        rest_url,
+                        symbols,
+                        data_config.get("kline_interval", "5m"),
+                        data_config.get("kline_limit", 200),
+                        exchange="bybit"
+                    )
+                    
+                    # Set up Bybit WebSocket callbacks
+                    self.websocket_client.on_kline_update = self._on_kline_update
+                    self.websocket_client.on_price_update = self._on_price_update
+                else:
+                    # Use Binance WebSocket client (default)
+                    logger.info("Initializing Binance WebSocket client")
+                    self.websocket_client = WebSocketClient(websocket_url, symbols)
+                    self.data_manager = DataManager(
+                        rest_url,
+                        symbols,
+                        data_config.get("kline_interval", "5m"),
+                        data_config.get("kline_limit", 200),
+                        exchange="binance"
+                    )
+                    
+                    # Set up Binance WebSocket callbacks
+                    self.websocket_client.on_kline_update = self._on_kline_update
+                    self.websocket_client.on_price_update = self._on_price_update
             
             # Strategies
             openrouter_config = self.config.get("openrouter", {})
@@ -310,7 +340,8 @@ class TradingBot:
                 "mock://localhost",
                 symbols,
                 data_config.get("kline_interval", "5m"),
-                data_config.get("kline_limit", 200)
+                data_config.get("kline_limit", 200),
+                exchange="mock"
             )
             
             # Set up mock data callbacks

@@ -5,14 +5,13 @@ openrouter:
   timeout: 30.0
 
 exchange:
-  name: "binance"  # Use real Binance (works in Singapore)
-  testnet: true
+  name: "bybit"  # Options: "binance", "bybit", "mock"
   trading_type: "spot"
-  api_key: "${BINANCE_API_KEY}"
-  api_secret: "${BINANCE_API_SECRET}"
-  websocket_url: "wss://testnet.binance.vision/ws"
-  rest_url: "https://testnet.binance.vision/api"
-  use_mock_data: false  # Use real Binance (Singapore connection works)
+  api_key: "${BYBIT_API_KEY}"
+  api_secret: "${BYBIT_API_SECRET}"
+  websocket_url: "wss://stream.bybit.com/v5/public/spot"
+  rest_url: "https://api.bybit.com"
+  use_mock_data: false
 
 trading:
   initial_capital: 10.0
