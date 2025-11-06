@@ -1,0 +1,26 @@
+========================================
+🔑 Render.com Bybit API Setup
+========================================
+
+1. Render Dashboard-এ যান:
+   https://dashboard.render.com
+
+2. আপনার service select করুন (ai-trading-bot)
+
+3. "Environment" tab-এ যান
+
+4. এই environment variables add করুন:
+
+   BYBIT_API_KEY=mZG4FlHSKEy2hSAhlz
+   BYBIT_API_SECRET=daMZv5YsDWSjsRiQ98BClewxp77dLNw1pslX
+
+5. "Save Changes" click করুন
+
+6. Render automatically redeploy করবে
+
+========================================
+✅ Ready!
+========================================
+
+Bot এখন Bybit-এ connect করবে এবং real-time trading শুরু করবে!
+
