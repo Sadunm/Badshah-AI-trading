@@ -94,6 +94,53 @@ def status():
         'error': bot_error if bot_error else None
     }, 200
 
+@app.route('/trades')
+def get_trades():
+    """Get trade history."""
+    try:
+        from ai_trading_bot.utils.trade_storage import TradeStorage
+        storage = TradeStorage("trades.json")
+        trades = storage.get_trades()
+        stats = storage.get_statistics()
+        
+        return {
+            'status': 'ok',
+            'total_trades': len(trades),
+            'statistics': stats,
+            'recent_trades': trades[-10:] if trades else []  # Last 10 trades
+        }, 200
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e)
+        }, 500
+
+@app.route('/pnl')
+def get_pnl():
+    """Get current P&L summary."""
+    try:
+        # Try to get PnL from bot if available
+        from ai_trading_bot.utils.trade_storage import TradeStorage
+        storage = TradeStorage("trades.json")
+        stats = storage.get_statistics()
+        
+        return {
+            'status': 'ok',
+            'total_pnl': stats.get('total_pnl', 0.0),
+            'total_trades': stats.get('total_trades', 0),
+            'win_rate': stats.get('win_rate', 0.0),
+            'winning_trades': stats.get('winning_trades', 0),
+            'losing_trades': stats.get('losing_trades', 0),
+            'average_pnl': stats.get('average_pnl', 0.0),
+            'best_trade': stats.get('best_trade', {}),
+            'worst_trade': stats.get('worst_trade', {})
+        }, 200
+    except Exception as e:
+        return {
+            'status': 'error',
+            'error': str(e)
+        }, 500
+
 if __name__ == '__main__':
     # Bot already started by ensure_bot_started() above
     # Get port from environment or use default
