@@ -208,7 +208,8 @@ class DataManager:
                             low_price = min(open_price, close_price, low_price, high_price)
                             high_price = max(open_price, close_price, low_price, high_price)
                         
-                    candle = {
+                        # Create candle dictionary
+                        candle = {
                             "open_time": start_time,
                             "close_time": close_time,
                             "open": open_price,
@@ -217,9 +218,9 @@ class DataManager:
                             "close": close_price,
                             "volume": max(0.0, volume),
                             "trades": 0  # Bybit doesn't provide trade count in this endpoint
-                    }
-                    candles.append(candle)
-                
+                        }
+                        candles.append(candle)
+                        
                     except (ValueError, TypeError, IndexError) as e:
                         logger.warning(f"Error parsing Bybit candle at index {idx} for {symbol}: {e}, skipping")
                         continue
@@ -228,7 +229,7 @@ class DataManager:
                 candles.reverse()
                 
                 if candles:
-                self.historical_data[symbol] = candles
+                    self.historical_data[symbol] = candles
                     logger.info(f"Fetched {len(candles)} valid candles for {symbol} from Bybit")
                 else:
                     logger.warning(f"No valid candles fetched for {symbol} from Bybit")
