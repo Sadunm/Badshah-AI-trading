@@ -1,0 +1,87 @@
+===========================================
+🚀 RENDER.COM DOCKER DEPLOYMENT - EXACT SETTINGS
+===========================================
+
+✅ PUSH DONE! All Docker files pushed to GitHub.
+
+===========================================
+📋 RENDER FORM - EXACT VALUES:
+===========================================
+
+1. NAME:
+   ✅ Badshah-AI-trading
+   (Already filled - Perfect!)
+
+2. LANGUAGE:
+   ✅ Docker
+   (Already selected - Perfect!)
+
+3. BRANCH:
+   ✅ main
+   (Already selected - Perfect!)
+
+4. REGION:
+   ⚠️ CHANGE THIS:
+   ❌ Oregon (US West)  ← Don't use this
+   ✅ Singapore (Asia Pacific)  ← Select this!
+   
+   Why? Your Binance connection works in Singapore!
+
+5. ROOT DIRECTORY:
+   ✅ Leave EMPTY (blank)
+   (Don't fill anything)
+
+6. DOCKERFILE PATH:
+   ✅ Dockerfile
+   (Just type: Dockerfile)
+   (Or leave default: ./Dockerfile)
+
+7. INSTANCE TYPE:
+   ✅ Free
+   ($0/month - Perfect for testing)
+
+8. ENVIRONMENT VARIABLES:
+   Add these 3:
+   
+   ✅ OPENROUTER_API_KEY
+      Value: [Your OpenRouter API key]
+   
+   ✅ BINANCE_API_KEY
+      Value: [Your Binance Testnet API key]
+   
+   ✅ BINANCE_API_SECRET
+      Value: [Your Binance Testnet API secret]
+
+   ⚠️ PORT variable NOT needed - Dockerfile handles it!
+
+===========================================
+🎯 SUMMARY - WHAT TO DO:
+===========================================
+
+1. ✅ Name: Badshah-AI-trading (already done)
+2. ✅ Language: Docker (already done)
+3. ✅ Branch: main (already done)
+4. ⚠️ REGION: Change to "Singapore (Asia Pacific)"
+5. ✅ Root Directory: Leave empty
+6. ✅ Dockerfile Path: Dockerfile (or ./Dockerfile)
+7. ✅ Instance: Free
+8. ✅ Add 3 environment variables (see above)
+
+===========================================
+🚀 THEN CLICK:
+===========================================
+
+"Deploy web service" button
+
+===========================================
+✅ THAT'S IT!
+===========================================
+
+Render will:
+1. Detect Dockerfile
+2. Build Docker image
+3. Deploy container
+4. Bot will start automatically!
+
+===========================================
+
