@@ -218,11 +218,18 @@ class TradingBot:
                 risk_config.get("max_daily_trades", 100)
             )
             
-            # Execution
+            # Execution - FORCE PAPER TRADING FOR SAFETY
+            paper_trading_mode = trading_config.get("paper_trading", True)
+            if not paper_trading_mode:
+                logger.warning("⚠️  Real trading disabled - forcing paper trading mode for safety")
+                paper_trading_mode = True
+            
             self.order_executor = OrderExecutor(
-                paper_trading=trading_config.get("paper_trading", True),
-                exchange_config=exchange_config if not trading_config.get("paper_trading", True) else None
+                paper_trading=paper_trading_mode,
+                exchange_config=exchange_config if not paper_trading_mode else None
             )
+            
+            logger.info(f"📊 Trading Mode: {'PAPER TRADING (Simulated)' if paper_trading_mode else 'REAL TRADING'}")
             
             # Trade storage (for persistence)
             try:
@@ -230,6 +237,9 @@ class TradingBot:
             except ImportError:
                 from ai_trading_bot.utils.trade_storage import TradeStorage
             self.trade_storage = TradeStorage("trades.json")
+            
+            # Log initial status
+            self._log_startup_summary()
             
             logger.info("All components initialized")
             
@@ -403,8 +413,11 @@ class TradingBot:
                             )
                             
                             # Save trade to storage
-                            if trade:
-                                self.trade_storage.add_trade(trade)
+                            if trade and hasattr(self, 'trade_storage'):
+                                try:
+                                    self.trade_storage.add_trade(trade)
+                                except Exception as e:
+                                    logger.error(f"Error saving trade to storage: {e}", exc_info=True)
                             
                             # Update allocator capital
                             self.position_allocator.update_capital(self.risk_manager.get_current_capital())
@@ -561,18 +574,55 @@ class TradingBot:
                 }
                 
                 if self.risk_manager.open_position(symbol, position):
-                    logger.info(f"Position opened: {symbol} {signal['action']} {position_size:.6f} @ ${execution['executed_price']:.2f}")
+                    logger.info(f"📈 Position opened: {symbol} {signal['action']} {position_size:.6f} @ ${execution['executed_price']:.2f} | "
+                               f"Cost: ${execution.get('total_cost', 0):.4f} (fees: ${execution.get('fees', 0):.4f})")
                     # Note: Trade will be saved when position closes
                 else:
-                    logger.warning(f"Failed to open position for {symbol}")
+                    logger.warning(f"⚠️ Failed to open position for {symbol}")
             else:
                 logger.error(f"Order execution failed for {symbol}")
                 
         except Exception as e:
             logger.error(f"Error executing signal for {symbol}: {e}", exc_info=True)
     
+    def _log_startup_summary(self) -> None:
+        """Log startup summary with existing trade history."""
+        try:
+            if not hasattr(self, 'trade_storage'):
+                logger.warning("Trade storage not initialized")
+                return
+            
+            # Load existing trades from storage
+            existing_trades = self.trade_storage.get_trades()
+            
+            if existing_trades:
+                stats = self.trade_storage.get_statistics()
+                logger.info("=" * 70)
+                logger.info("📊 EXISTING TRADE HISTORY:")
+                logger.info(f"   Total Trades: {stats['total_trades']}")
+                logger.info(f"   Win Rate: {stats['win_rate']:.1f}% ({stats['winning_trades']}W / {stats['losing_trades']}L)")
+                logger.info(f"   Total P&L: ${stats['total_pnl']:.4f}")
+                logger.info(f"   Average P&L: ${stats['average_pnl']:.4f}")
+                if stats['best_trade']:
+                    logger.info(f"   Best Trade: ${stats['best_trade'].get('net_pnl', 0):.4f}")
+                if stats['worst_trade']:
+                    logger.info(f"   Worst Trade: ${stats['worst_trade'].get('net_pnl', 0):.4f}")
+                logger.info("=" * 70)
+            else:
+                logger.info("📊 No existing trades - starting fresh!")
+            
+            # Current capital status
+            capital = self.risk_manager.get_current_capital()
+            initial_capital = self.risk_manager.initial_capital
+            logger.info(f"💰 Initial Capital: ${initial_capital:.2f} | Current Capital: ${capital:.2f}")
+            logger.info(f"📈 Paper Trading: ENABLED | Fees: 0.1% per side (Binance matching)")
+            logger.info("")
+            
+        except Exception as e:
+            logger.error(f"Error logging startup summary: {e}", exc_info=True)
+    
     def _log_status(self) -> None:
-        """Log bot status."""
+        """Log bot status with detailed PnL information."""
         try:
             capital = self.risk_manager.get_current_capital()
             pnl = self.risk_manager.get_total_pnl()
@@ -580,8 +630,19 @@ class TradingBot:
             open_positions = len(self.risk_manager.get_open_positions())
             total_trades = len(self.risk_manager.get_trade_history())
             
-            logger.info(f"Status - Capital: ${capital:.2f}, P&L: ${pnl:.2f}, Drawdown: {drawdown:.2f}%, "
-                       f"Open Positions: {open_positions}, Total Trades: {total_trades}")
+            # Calculate PnL percentage
+            initial_capital = self.risk_manager.initial_capital
+            pnl_pct = (pnl / initial_capital * 100) if initial_capital > 0 else 0.0
+            
+            # Get trade statistics
+            trade_history = self.risk_manager.get_trade_history()
+            winning_trades = [t for t in trade_history if t.get("net_pnl", 0) > 0]
+            losing_trades = [t for t in trade_history if t.get("net_pnl", 0) < 0]
+            win_rate = (len(winning_trades) / total_trades * 100) if total_trades > 0 else 0.0
+            
+            logger.info(f"📊 Status - Capital: ${capital:.2f} | P&L: ${pnl:.2f} ({pnl_pct:+.2f}%) | "
+                       f"Drawdown: {drawdown:.2f}% | Open: {open_positions} | "
+                       f"Trades: {total_trades} (Win Rate: {win_rate:.1f}%)")
             
         except Exception as e:
             logger.error(f"Error logging status: {e}", exc_info=True)

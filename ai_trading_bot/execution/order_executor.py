@@ -90,8 +90,9 @@ class OrderExecutor:
             slippage = random.uniform(-self.slippage_pct, self.slippage_pct)
             executed_price = entry_price * (1 + slippage)
             
-            # Calculate fees (0.1% per side)
-            fee_rate = 0.001
+            # Calculate fees - Binance Spot Trading Fee: 0.1% per side (maker/taker)
+            # This matches Binance exactly: 0.1% = 0.001
+            fee_rate = 0.001  # 0.1% per side, matching Binance spot trading
             fees = executed_price * size * fee_rate
             
             execution = {
@@ -216,8 +217,9 @@ class OrderExecutor:
             slippage = random.uniform(-self.slippage_pct, self.slippage_pct)
             executed_price = exit_price * (1 + slippage)
             
-            # Calculate fees (0.1% per side)
-            fee_rate = 0.001
+            # Calculate fees - Binance Spot Trading Fee: 0.1% per side
+            # This matches Binance exactly: 0.1% = 0.001 per side
+            fee_rate = 0.001  # 0.1% per side, matching Binance spot trading
             size = position["size"]
             fees = executed_price * size * fee_rate
             

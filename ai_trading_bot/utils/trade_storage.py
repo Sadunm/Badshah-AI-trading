@@ -80,7 +80,15 @@ class TradeStorage:
             
             self.trades.append(trade)
             self._save_trades()
-            logger.debug(f"Trade added to storage: {trade.get('symbol')} {trade.get('action')}")
+            
+            # Log trade summary for visibility
+            symbol = trade.get('symbol', 'UNKNOWN')
+            action = trade.get('action', 'UNKNOWN')
+            net_pnl = trade.get('net_pnl', 0.0)
+            pnl_emoji = "✅" if net_pnl > 0 else "❌" if net_pnl < 0 else "➖"
+            
+            logger.info(f"💾 {pnl_emoji} Trade saved: {symbol} {action} | P&L: ${net_pnl:.4f} | "
+                       f"Total Trades: {len(self.trades)}")
             
         except Exception as e:
             logger.error(f"Error adding trade: {e}", exc_info=True)

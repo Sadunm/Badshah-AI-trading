@@ -15,7 +15,7 @@ exchange:
 
 trading:
   initial_capital: 10.0
-  paper_trading: true  # Paper trading mode (simulated execution)
+  paper_trading: true  # Paper trading mode (simulated execution) - ALWAYS TRUE FOR SAFETY
   max_position_size_pct: 1.0
   max_portfolio_risk_pct: 20.0
 

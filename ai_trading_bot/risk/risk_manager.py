@@ -165,7 +165,7 @@ class RiskManager:
             # Update daily P&L
             self.daily_pnl += net_pnl
             
-            # Create trade record
+            # Create trade record with complete PnL information
             trade = {
                 "symbol": symbol,
                 "action": action,
@@ -173,17 +173,25 @@ class RiskManager:
                 "entry_price": entry_price,
                 "exit_price": exit_price,
                 "gross_pnl": gross_pnl,
+                "entry_fee": entry_fee,
+                "exit_fee": exit_fee,
                 "fees": total_fees,
                 "net_pnl": net_pnl,
+                "pnl": net_pnl,  # Alias for performance analyzer
+                "initial_capital": self.initial_capital,  # For performance analysis
                 "open_time": position["open_time"],
                 "close_time": time.time(),
                 "duration": time.time() - position["open_time"],
-                "reason": reason
+                "reason": reason,
+                "paper_trading": True  # Always paper trading for now
             }
             
             self.trade_history.append(trade)
             
-            logger.info(f"Position closed: {symbol} {action} @ ${exit_price:.2f}, P&L: ${net_pnl:.2f} ({reason})")
+            # Log detailed PnL information
+            pnl_pct = (net_pnl / (entry_price * size) * 100) if entry_price * size > 0 else 0.0
+            logger.info(f"✅ Position closed: {symbol} {action} @ ${exit_price:.2f} | "
+                       f"P&L: ${net_pnl:.2f} ({pnl_pct:+.2f}%) | Fees: ${total_fees:.4f} | {reason}")
             
             return trade
             
