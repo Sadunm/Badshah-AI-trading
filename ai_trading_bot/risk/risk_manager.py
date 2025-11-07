@@ -106,11 +106,31 @@ class RiskManager:
                 logger.warning(f"Position already exists for {symbol}")
                 return False
             
+            # Calculate and deduct capital for position opening (entry cost + fees)
+            size = position.get("size", 0)
+            entry_price = position.get("entry_price", 0)
+            entry_cost = entry_price * size
+            entry_fee = entry_price * size * self.fee_rate
+            total_entry_cost = entry_cost + entry_fee
+            
+            # Check if we have enough capital
+            if self.current_capital < total_entry_cost:
+                logger.warning(f"Insufficient capital to open position: ${self.current_capital:.2f} < ${total_entry_cost:.2f}")
+                return False
+            
+            # Deduct capital for position opening
+            self.current_capital -= total_entry_cost
+            
+            # Store entry cost for PnL calculation later
+            position["entry_cost"] = entry_cost
+            position["entry_fee"] = entry_fee
             position["open_time"] = time.time()
             self.open_positions[symbol] = position
             self.daily_trades += 1
             
-            logger.info(f"Position opened: {symbol} {position['action']} {position['size']:.6f} @ ${position['entry_price']:.2f}")
+            logger.info(f"Position opened: {symbol} {position['action']} {size:.6f} @ ${entry_price:.2f} | "
+                       f"Cost: ${total_entry_cost:.4f} (entry: ${entry_cost:.4f} + fee: ${entry_fee:.4f}) | "
+                       f"Remaining Capital: ${self.current_capital:.2f}")
             return True
             
         except Exception as e:
@@ -150,15 +170,23 @@ class RiskManager:
                 gross_pnl = 0.0
             
             # Fees (0.1% each side)
-            entry_fee = entry_price * size * self.fee_rate
+            # Entry fee was already deducted when opening, so we only need exit fee here
+            entry_fee = position.get("entry_fee", entry_price * size * self.fee_rate)
             exit_fee = exit_price * size * self.fee_rate
             total_fees = entry_fee + exit_fee
             
-            # Net P&L
-            net_pnl = gross_pnl - total_fees
+            # Net P&L calculation:
+            # When opening: capital was reduced by (entry_cost + entry_fee)
+            # When closing: we get (exit_proceeds - exit_fee)
+            # Net P&L = (exit_proceeds - exit_fee) - (entry_cost + entry_fee)
+            #         = exit_proceeds - entry_cost - entry_fee - exit_fee
+            entry_cost = position.get("entry_cost", entry_price * size)
+            exit_proceeds = exit_price * size
+            net_pnl = exit_proceeds - entry_cost - entry_fee - exit_fee  # Both fees included
             
-            # Update capital
-            self.current_capital += net_pnl
+            # Update capital: add back exit proceeds minus exit fee
+            # (entry_cost + entry_fee were already deducted at open)
+            self.current_capital += exit_proceeds - exit_fee
             if self.current_capital > self.peak_capital:
                 self.peak_capital = self.current_capital
             
