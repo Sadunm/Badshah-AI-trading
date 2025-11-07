@@ -304,22 +304,23 @@ class DataManager:
                 candle["low"] = min(candle["open"], candle["close"], candle["low"], candle["high"])
                 candle["high"] = max(candle["open"], candle["close"], candle["low"], candle["high"])
             
-        if symbol not in self.historical_data:
-            self.historical_data[symbol] = []
-        
-        candles = self.historical_data[symbol]
-        
-        # Check if this candle updates the last one
-        if candles and candles[-1]["close_time"] == candle["close_time"]:
-            candles[-1] = candle
-        else:
-            candles.append(candle)
-            # Keep only last kline_limit candles
-            if len(candles) > self.kline_limit:
-                candles.pop(0)
-        
-        self.historical_data[symbol] = candles
+            # Update historical data
+            if symbol not in self.historical_data:
+                self.historical_data[symbol] = []
             
+            candles = self.historical_data[symbol]
+            
+            # Check if this candle updates the last one
+            if candles and candles[-1]["close_time"] == candle["close_time"]:
+                candles[-1] = candle
+            else:
+                candles.append(candle)
+                # Keep only last kline_limit candles
+                if len(candles) > self.kline_limit:
+                    candles.pop(0)
+            
+            self.historical_data[symbol] = candles
+                
         except Exception as e:
             logger.error(f"Error updating kline for {symbol}: {e}", exc_info=True)
 
