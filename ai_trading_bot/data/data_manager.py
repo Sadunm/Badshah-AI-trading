@@ -208,7 +208,7 @@ class DataManager:
                             low_price = min(open_price, close_price, low_price, high_price)
                             high_price = max(open_price, close_price, low_price, high_price)
                         
-                        candle = {
+                    candle = {
                             "open_time": start_time,
                             "close_time": close_time,
                             "open": open_price,
@@ -217,9 +217,9 @@ class DataManager:
                             "close": close_price,
                             "volume": max(0.0, volume),
                             "trades": 0  # Bybit doesn't provide trade count in this endpoint
-                        }
-                        candles.append(candle)
-                        
+                    }
+                    candles.append(candle)
+                
                     except (ValueError, TypeError, IndexError) as e:
                         logger.warning(f"Error parsing Bybit candle at index {idx} for {symbol}: {e}, skipping")
                         continue
@@ -228,7 +228,7 @@ class DataManager:
                 candles.reverse()
                 
                 if candles:
-                    self.historical_data[symbol] = candles
+                self.historical_data[symbol] = candles
                     logger.info(f"Fetched {len(candles)} valid candles for {symbol} from Bybit")
                 else:
                     logger.warning(f"No valid candles fetched for {symbol} from Bybit")
@@ -303,21 +303,21 @@ class DataManager:
                 candle["low"] = min(candle["open"], candle["close"], candle["low"], candle["high"])
                 candle["high"] = max(candle["open"], candle["close"], candle["low"], candle["high"])
             
-            if symbol not in self.historical_data:
-                self.historical_data[symbol] = []
-            
-            candles = self.historical_data[symbol]
-            
-            # Check if this candle updates the last one
-            if candles and candles[-1]["close_time"] == candle["close_time"]:
-                candles[-1] = candle
-            else:
-                candles.append(candle)
-                # Keep only last kline_limit candles
-                if len(candles) > self.kline_limit:
-                    candles.pop(0)
-            
-            self.historical_data[symbol] = candles
+        if symbol not in self.historical_data:
+            self.historical_data[symbol] = []
+        
+        candles = self.historical_data[symbol]
+        
+        # Check if this candle updates the last one
+        if candles and candles[-1]["close_time"] == candle["close_time"]:
+            candles[-1] = candle
+        else:
+            candles.append(candle)
+            # Keep only last kline_limit candles
+            if len(candles) > self.kline_limit:
+                candles.pop(0)
+        
+        self.historical_data[symbol] = candles
             
         except Exception as e:
             logger.error(f"Error updating kline for {symbol}: {e}", exc_info=True)

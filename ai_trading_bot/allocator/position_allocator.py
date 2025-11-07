@@ -89,13 +89,22 @@ class PositionAllocator:
             # Minimum position size check - adaptive based on capital
             position_value = position_size * entry_price
             
-            # Adaptive minimum: 5% of capital or $0.10, whichever is smaller
-            # For $10 capital: min = $0.10, for $100: min = $0.50
-            min_position_value = min(self.current_capital * 0.05, 0.5)
-            min_position_value = max(min_position_value, 0.10)  # Absolute minimum $0.10
+            # For small capital: use 50% of max position value as minimum (to allow some flexibility)
+            # For $10 capital with 1% max: min = $0.05 (50% of $0.10)
+            # For larger capital: use adaptive minimum
+            if self.current_capital < 20:
+                # Very small capital: minimum is 50% of max position value
+                min_position_value = max_position_value * 0.5
+                min_position_value = max(min_position_value, 0.05)  # Absolute minimum $0.05 for very small capital
+            else:
+                # Normal capital: adaptive minimum
+                min_position_value = min(self.current_capital * 0.05, 0.5)
+                min_position_value = max(min_position_value, 0.10)  # Absolute minimum $0.10
             
-            if position_value < min_position_value:
-                logger.debug(f"Position size too small: ${position_value:.4f} < ${min_position_value:.4f} (capital: ${self.current_capital:.2f}) for {signal.get('action', 'UNKNOWN')}")
+            # Add small tolerance for floating point comparison (0.1% tolerance)
+            tolerance = min_position_value * 0.001
+            if position_value < (min_position_value - tolerance):
+                logger.debug(f"Position size too small: ${position_value:.6f} < ${min_position_value:.6f} (capital: ${self.current_capital:.2f}, max: ${max_position_value:.6f}) for {signal.get('action', 'UNKNOWN')}")
                 return None
             
             # Ensure position size is reasonable (not too small due to rounding)
@@ -103,7 +112,12 @@ class PositionAllocator:
                 logger.debug(f"Position size too small: {position_size:.8f} units")
                 return None
             
-            logger.info(f"Position size calculated: {position_size:.6f} units @ ${entry_price:.2f} = ${position_value:.2f}")
+            # Final validation: ensure position value is reasonable
+            if position_value <= 0:
+                logger.warning(f"Invalid position value: ${position_value:.6f}")
+                return None
+            
+            logger.info(f"Position size calculated: {position_size:.8f} units @ ${entry_price:.6f} = ${position_value:.6f} (capital: ${self.current_capital:.2f}, max: ${max_position_value:.6f}, min: ${min_position_value:.6f})")
             
             return position_size
             
