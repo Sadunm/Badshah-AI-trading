@@ -599,17 +599,49 @@ class TradingBot:
                 else:
                     logger.warning(f"Invalid current price for {symbol}: {current_price}")
             
-            # Check risk limits with current prices for accurate equity calculation
-            if not self.risk_manager.can_open_position(current_prices):
-                logger.warning("Cannot open position - risk limits reached")
-                return
-            
-            # Calculate position size
+            # Calculate position size first (to estimate cost)
             current_price = market_data.get("current_price", signal.get("entry_price", 0))
             position_size = self.position_allocator.calculate_position_size(signal, current_price)
             
             if position_size is None or position_size <= 0:
                 logger.warning(f"Invalid position size for {symbol}")
+                return
+            
+            # Estimate position cost (entry price + fees) to check if we can afford it
+            estimated_entry_price = signal.get("entry_price", current_price)
+            if estimated_entry_price <= 0:
+                estimated_entry_price = current_price
+            
+            # Calculate estimated cost (position value + entry fee)
+            estimated_position_value = position_size * estimated_entry_price
+            estimated_entry_fee = estimated_position_value * 0.001  # 0.1% fee
+            estimated_total_cost = estimated_position_value + estimated_entry_fee
+            
+            # Check if we have enough capital
+            available_capital = self.risk_manager.get_current_capital()
+            if available_capital < estimated_total_cost:
+                logger.warning(f"Insufficient capital for {symbol}: ${available_capital:.2f} < ${estimated_total_cost:.4f}")
+                return
+            
+            # Simulate opening position to check if it would exceed drawdown
+            # Calculate what equity would be after opening this position
+            # Use the internal method to get current equity
+            current_equity = self.risk_manager._calculate_current_equity(current_prices)
+            simulated_equity_after_position = current_equity - estimated_total_cost  # Deduct position cost
+            
+            # Check if this would exceed drawdown limit
+            peak_capital = self.risk_manager.peak_capital
+            if peak_capital > 0:
+                simulated_drawdown = ((peak_capital - simulated_equity_after_position) / peak_capital) * 100
+                max_drawdown = self.risk_manager.max_drawdown_pct - 0.1  # Use buffer
+                
+                if simulated_drawdown >= max_drawdown:
+                    logger.warning(f"Opening position would exceed drawdown limit: {simulated_drawdown:.2f}% >= {max_drawdown:.2f}% (current equity: ${current_equity:.2f}, after position: ${simulated_equity_after_position:.2f})")
+                    return
+            
+            # Now check risk limits with current prices for accurate equity calculation
+            if not self.risk_manager.can_open_position(current_prices):
+                logger.warning("Cannot open position - risk limits reached")
                 return
             
             # Execute order

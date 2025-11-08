@@ -103,8 +103,13 @@ class RiskManager:
                 return False
             
             drawdown_pct = ((self.peak_capital - current_equity) / self.peak_capital) * 100
-            if drawdown_pct >= self.max_drawdown_pct:
-                logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {self.max_drawdown_pct}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
+            
+            # Add small buffer (0.1%) to prevent hitting limit exactly due to floating point precision
+            # This prevents opening positions that would push us exactly to the limit
+            drawdown_threshold = self.max_drawdown_pct - 0.1
+            
+            if drawdown_pct >= drawdown_threshold:
+                logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {drawdown_threshold:.2f}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
                 return False
             
             # Check daily loss

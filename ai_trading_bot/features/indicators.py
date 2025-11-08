@@ -77,9 +77,11 @@ def calculate_rsi(prices: List[float], period: int = 14) -> Optional[np.ndarray]
             avg_gain[i] = (avg_gain[i-1] * (period - 1) + gains[i-1]) / period
             avg_loss[i] = (avg_loss[i-1] * (period - 1) + losses[i-1]) / period
         
-        # Calculate RSI
-        rs = np.where(avg_loss != 0, avg_gain / avg_loss, 100)
-        rsi = 100 - (100 / (1 + rs))
+        # Calculate RSI with proper handling of division by zero
+        # Suppress division warning by using np.divide with where condition
+        with np.errstate(divide='ignore', invalid='ignore'):
+            rs = np.divide(avg_gain, avg_loss, out=np.full_like(avg_gain, 100.0), where=(avg_loss != 0))
+            rsi = 100 - (100 / (1 + rs))
         
         # Handle NaN and Inf
         rsi = np.nan_to_num(rsi, nan=50.0, posinf=100.0, neginf=0.0)

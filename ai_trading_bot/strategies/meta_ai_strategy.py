@@ -46,15 +46,24 @@ class MetaAIStrategy(BaseStrategy):
         if not self.risk_check_enabled:
             return True
         
+        # Check if API key is available
         if not self.client.api_key:
-            logger.warning("Meta AI validation skipped - API key not available")
+            # Only log once to avoid spam
+            if not hasattr(self, '_api_key_warning_logged'):
+                logger.warning("Meta AI validation skipped - API key not available")
+                self._api_key_warning_logged = True
+            return True  # Fail-open
+        
+        # Check if client is permanently disabled (401 error)
+        if hasattr(self.client, 'auth_error_permanent') and self.client.auth_error_permanent:
+            # Already logged in openrouter_client, don't log again
             return True  # Fail-open
         
         try:
             # Create risk assessment prompt
             prompt = self._create_risk_prompt(signal, market_data, symbol)
             
-            # Make API request
+            # Make API request (this will handle errors and logging internally)
             response = self.client._make_request(prompt)
             
             if response:
@@ -66,7 +75,14 @@ class MetaAIStrategy(BaseStrategy):
                     logger.warning(f"Meta AI rejected signal for {symbol}: {signal['action']}")
                 return approved
             else:
-                logger.warning("Meta AI validation failed - approving signal (fail-open)")
+                # Don't log warning if auth error is permanent (already logged)
+                if not (hasattr(self.client, 'auth_error_permanent') and self.client.auth_error_permanent):
+                    # Only log occasionally to avoid spam
+                    if not hasattr(self, '_validation_failure_count'):
+                        self._validation_failure_count = 0
+                    self._validation_failure_count += 1
+                    if self._validation_failure_count % 10 == 0:  # Log every 10th failure
+                        logger.warning("Meta AI validation failed - approving signal (fail-open)")
                 return True  # Fail-open
                 
         except Exception as e:

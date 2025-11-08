@@ -204,6 +204,10 @@ Respond with ONLY the JSON, no additional text."""
     
     def _make_request(self, prompt: str) -> Optional[str]:
         """Make API request to OpenRouter."""
+        # Check if permanently disabled (401 error) - return early without logging
+        if hasattr(self, 'auth_error_permanent') and self.auth_error_permanent:
+            return None
+        
         try:
             url = f"{self.base_url}/chat/completions"
             headers = {
