@@ -42,7 +42,9 @@ class WebSocketClient:
         
         # Threading
         self.ws_thread: Optional[threading.Thread] = None
+        self._reconnect_timer: Optional[threading.Timer] = None
         self.lock = threading.Lock()
+        self._reconnect_lock = threading.Lock()  # Lock for reconnection operations
     
     def start(self) -> bool:
         """Start WebSocket connection."""
@@ -56,12 +58,23 @@ class WebSocketClient:
     def stop(self) -> None:
         """Stop WebSocket connection."""
         self.is_running = False
+        
+        # Cancel reconnection timer if active
+        if hasattr(self, '_reconnect_timer') and self._reconnect_timer:
+            try:
+                self._reconnect_timer.cancel()
+            except Exception:
+                pass
+        
+        # Close WebSocket
         if self.ws:
             try:
                 self.ws.close()
             except Exception as e:
                 logger.error(f"Error closing WebSocket: {e}")
-        self.is_connected = False
+        
+        with self.lock:
+            self.is_connected = False
     
     def _connect(self) -> bool:
         """Connect to WebSocket."""
@@ -234,29 +247,36 @@ class WebSocketClient:
             logger.info("Reconnection cancelled - WebSocket stopped")
             return
         
-        # Reset connection state
-        self.is_connected = False
-        if self.ws:
-            try:
-                self.ws.close()
-            except Exception:
-                pass
-            self.ws = None
+        # Reset connection state (thread-safe)
+        with self.lock:
+            self.is_connected = False
+            if self.ws:
+                try:
+                    self.ws.close()
+                except Exception:
+                    pass
+                self.ws = None
         
         # Attempt reconnection
         logger.info(f"Attempting reconnection (attempt {self.reconnect_attempts}/{self.max_reconnect_attempts})")
         success = self._connect()
         
         if success and self.is_connected:
-            # Reset delay on successful connection
+            # Reset delay and attempts on successful connection
             self.reconnect_delay = 1.0
+            self.reconnect_attempts = 0
             logger.info("Reconnection successful")
         else:
-            # Schedule next reconnection attempt
-            self.reconnect_delay = delay
+            # Schedule next reconnection attempt in a separate thread (daemon)
+            # Use a single reconnection thread to avoid thread leaks
             if self.is_running:
-                # Schedule next reconnect in a separate thread to avoid blocking
-                threading.Timer(0.1, self._reconnect).start()
+                if not hasattr(self, '_reconnect_timer') or not self._reconnect_timer.is_alive():
+                    self._reconnect_timer = threading.Timer(delay, self._reconnect)
+                    self._reconnect_timer.daemon = True
+                    self._reconnect_timer.start()
+                else:
+                    # If reconnect timer already running, just wait
+                    logger.debug("Reconnection timer already active, waiting...")
     
     def get_price(self, symbol: str) -> Optional[float]:
         """Get current price for symbol."""

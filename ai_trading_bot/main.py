@@ -387,40 +387,81 @@ class TradingBot:
             logger.error(f"Error during shutdown: {e}", exc_info=True)
     
     def _monitor_positions(self) -> None:
-        """Monitor open positions every 5 seconds."""
+        """Monitor open positions every 5 seconds with improved error handling."""
         while self.is_running:
             try:
-                open_positions = self.risk_manager.get_open_positions()
+                # Get snapshot of open positions (thread-safe)
+                open_positions = self.risk_manager.get_open_positions().copy()
                 
-                for symbol, position in open_positions.items():
-                    # Get current price
-                    current_price = self.websocket_client.get_price(symbol)
+                if not open_positions:
+                    time.sleep(5)
+                    continue
+                
+                for symbol, position in list(open_positions.items()):  # Create list to avoid modification during iteration
+                    try:
+                        # Validate position data
+                        if not position or not isinstance(position, dict):
+                            logger.warning(f"Invalid position data for {symbol}, skipping")
+                            continue
+                        
+                        # Get current price with validation
+                        current_price = self.websocket_client.get_price(symbol)
+                        
+                        # Validate price
+                        if current_price is None or current_price <= 0 or not isinstance(current_price, (int, float)):
+                            # Try fallback: get from market data
+                            try:
+                                market_data = self._get_market_data(symbol)
+                                if market_data and "current_price" in market_data:
+                                    current_price = market_data["current_price"]
+                                else:
+                                    logger.warning(f"Unable to get valid price for {symbol}, skipping check")
+                                    continue
+                            except Exception:
+                                logger.warning(f"Error getting fallback price for {symbol}")
+                                continue
+                        
+                        # Additional price validation (prevent extreme values)
+                        entry_price = position.get("entry_price", 0)
+                        if entry_price > 0:
+                            # Price change should not exceed 50% in single check (likely data error)
+                            price_change_pct = abs((current_price - entry_price) / entry_price)
+                            if price_change_pct > 0.5:
+                                logger.warning(f"Suspicious price change for {symbol}: {price_change_pct*100:.2f}%, skipping check")
+                                continue
+                        
+                        # Check stop loss and take profit
+                        trigger = self.risk_manager.check_stop_loss_take_profit(symbol, current_price)
+                        
+                        if trigger:
+                            # Close position (thread-safe operation)
+                            try:
+                                execution = self.order_executor.close_order(symbol, position, current_price)
+                                if execution:
+                                    trade = self.risk_manager.close_position(
+                                        symbol,
+                                        execution["executed_price"],
+                                        trigger
+                                    )
+                                    
+                                    # Save trade to storage
+                                    if trade and hasattr(self, 'trade_storage'):
+                                        try:
+                                            self.trade_storage.add_trade(trade)
+                                        except Exception as e:
+                                            logger.error(f"Error saving trade to storage: {e}", exc_info=True)
+                                    
+                                    # Update allocator capital
+                                    self.position_allocator.update_capital(self.risk_manager.get_current_capital())
+                            except Exception as e:
+                                logger.error(f"Error closing position for {symbol}: {e}", exc_info=True)
                     
-                    if current_price is None or current_price <= 0:
+                    except KeyError:
+                        # Position was closed by another thread, skip
                         continue
-                    
-                    # Check stop loss and take profit
-                    trigger = self.risk_manager.check_stop_loss_take_profit(symbol, current_price)
-                    
-                    if trigger:
-                        # Close position
-                        execution = self.order_executor.close_order(symbol, position, current_price)
-                        if execution:
-                            trade = self.risk_manager.close_position(
-                                symbol,
-                                execution["executed_price"],
-                                trigger
-                            )
-                            
-                            # Save trade to storage
-                            if trade and hasattr(self, 'trade_storage'):
-                                try:
-                                    self.trade_storage.add_trade(trade)
-                                except Exception as e:
-                                    logger.error(f"Error saving trade to storage: {e}", exc_info=True)
-                            
-                            # Update allocator capital
-                            self.position_allocator.update_capital(self.risk_manager.get_current_capital())
+                    except Exception as e:
+                        logger.error(f"Error monitoring position {symbol}: {e}", exc_info=True)
+                        continue
                 
                 time.sleep(5)  # Monitor every 5 seconds
                 
@@ -549,10 +590,14 @@ class TradingBot:
                 except Exception:
                     pass  # Skip if can't get price
             
-            # Add current symbol price
+            # Add current symbol price with validation
             current_price = market_data.get("current_price", signal.get("entry_price", 0))
-            if current_price > 0:
-                current_prices[symbol] = current_price
+            if current_price and isinstance(current_price, (int, float)) and current_price > 0:
+                # Additional validation: price should be reasonable (not NaN, Inf, or extreme)
+                if float('inf') > current_price > 0 and current_price < 1e10:  # Reasonable upper bound
+                    current_prices[symbol] = float(current_price)
+                else:
+                    logger.warning(f"Invalid current price for {symbol}: {current_price}")
             
             # Check risk limits with current prices for accurate equity calculation
             if not self.risk_manager.can_open_position(current_prices):

@@ -5,6 +5,7 @@ import time
 from typing import Dict, List, Optional
 import requests
 from ..utils.logger import get_logger
+from ..utils.rate_limiter import BINANCE_RATE_LIMITER, BYBIT_RATE_LIMITER
 
 logger = get_logger(__name__)
 
@@ -58,7 +59,35 @@ class DataManager:
             }
             
             logger.info(f"Fetching Binance historical data for {symbol}...")
-            response = requests.get(url, params=params, timeout=10)
+            
+            # Apply rate limiting
+            BINANCE_RATE_LIMITER.wait_if_needed()
+            
+            # Make request with timeout and retry logic
+            max_retries = 3
+            response = None
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(url, params=params, timeout=10)
+                    break
+                except requests.exceptions.Timeout:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Timeout fetching Binance data (attempt {attempt + 1}/{max_retries}), retrying...")
+                        time.sleep(1)
+                    else:
+                        logger.error(f"Timeout fetching Binance data after {max_retries} attempts")
+                        return []
+                except requests.exceptions.RequestException as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Request error fetching Binance data (attempt {attempt + 1}/{max_retries}): {e}, retrying...")
+                        time.sleep(1)
+                    else:
+                        logger.error(f"Request error fetching Binance data after {max_retries} attempts: {e}")
+                        return []
+            
+            if response is None:
+                logger.error(f"Failed to fetch Binance data after {max_retries} attempts")
+                return []
             
             if response.status_code == 200:
                 data = response.json()
@@ -160,7 +189,35 @@ class DataManager:
             }
             
             logger.info(f"Fetching Bybit historical data for {symbol}...")
-            response = requests.get(url, params=params, timeout=10)
+            
+            # Apply rate limiting
+            BYBIT_RATE_LIMITER.wait_if_needed()
+            
+            # Make request with timeout and retry logic
+            max_retries = 3
+            response = None
+            for attempt in range(max_retries):
+                try:
+                    response = requests.get(url, params=params, timeout=10)
+                    break
+                except requests.exceptions.Timeout:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Timeout fetching Bybit data (attempt {attempt + 1}/{max_retries}), retrying...")
+                        time.sleep(1)
+                    else:
+                        logger.error(f"Timeout fetching Bybit data after {max_retries} attempts")
+                        return []
+                except requests.exceptions.RequestException as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Request error fetching Bybit data (attempt {attempt + 1}/{max_retries}): {e}, retrying...")
+                        time.sleep(1)
+                    else:
+                        logger.error(f"Request error fetching Bybit data after {max_retries} attempts: {e}")
+                        return []
+            
+            if response is None:
+                logger.error(f"Failed to fetch Bybit data after {max_retries} attempts")
+                return []
             
             if response.status_code == 200:
                 data = response.json()
