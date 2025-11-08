@@ -539,8 +539,23 @@ class TradingBot:
     def _execute_signal(self, symbol: str, signal: Dict, market_data: Dict) -> None:
         """Execute a trading signal."""
         try:
-            # Check risk limits
-            if not self.risk_manager.can_open_position():
+            # Get current prices for all open positions for accurate equity calculation
+            current_prices = {}
+            for open_symbol in self.risk_manager.get_open_positions().keys():
+                try:
+                    price_data = self._get_market_data(open_symbol)
+                    if price_data and "current_price" in price_data:
+                        current_prices[open_symbol] = price_data["current_price"]
+                except Exception:
+                    pass  # Skip if can't get price
+            
+            # Add current symbol price
+            current_price = market_data.get("current_price", signal.get("entry_price", 0))
+            if current_price > 0:
+                current_prices[symbol] = current_price
+            
+            # Check risk limits with current prices for accurate equity calculation
+            if not self.risk_manager.can_open_position(current_prices):
                 logger.warning("Cannot open position - risk limits reached")
                 return
             
@@ -624,9 +639,20 @@ class TradingBot:
     def _log_status(self) -> None:
         """Log bot status with detailed PnL information."""
         try:
+            # Get current prices for accurate equity calculation
+            current_prices = {}
+            for symbol in self.risk_manager.get_open_positions().keys():
+                try:
+                    price_data = self._get_market_data(symbol)
+                    if price_data and "current_price" in price_data:
+                        current_prices[symbol] = price_data["current_price"]
+                except Exception:
+                    pass  # Skip if can't get price
+            
             capital = self.risk_manager.get_current_capital()
-            pnl = self.risk_manager.get_total_pnl()
-            drawdown = self.risk_manager.get_drawdown_pct()
+            equity = self.risk_manager.get_current_equity(current_prices)
+            pnl = self.risk_manager.get_total_pnl(current_prices)
+            drawdown = self.risk_manager.get_drawdown_pct(current_prices)
             open_positions = len(self.risk_manager.get_open_positions())
             total_trades = len(self.risk_manager.get_trade_history())
             
@@ -640,7 +666,10 @@ class TradingBot:
             losing_trades = [t for t in trade_history if t.get("net_pnl", 0) < 0]
             win_rate = (len(winning_trades) / total_trades * 100) if total_trades > 0 else 0.0
             
-            logger.info(f"📊 Status - Capital: ${capital:.2f} | P&L: ${pnl:.2f} ({pnl_pct:+.2f}%) | "
+            # Show both capital and equity
+            unrealized_pnl = equity - capital
+            logger.info(f"📊 Status - Capital: ${capital:.2f} | Equity: ${equity:.2f} | "
+                       f"PnL: ${pnl:.2f} ({pnl_pct:+.2f}%) | Unrealized: ${unrealized_pnl:+.2f} | "
                        f"Drawdown: {drawdown:.2f}% | Open: {open_positions} | "
                        f"Trades: {total_trades} (Win Rate: {win_rate:.1f}%)")
             

@@ -72,15 +72,19 @@ class DataManager:
                             logger.warning(f"Invalid candle data at index {idx} for {symbol}, skipping")
                             continue
                         
-                        # Parse with validation
-                        open_time = int(item[0])
-                        close_time = int(item[6])
-                        open_price = float(item[1])
-                        high_price = float(item[2])
-                        low_price = float(item[3])
-                        close_price = float(item[4])
-                        volume = float(item[5])
-                        trades = int(item[8])
+                        # Parse with validation - safe type conversion
+                        try:
+                            open_time = int(float(item[0])) if item[0] else 0
+                            close_time = int(float(item[6])) if len(item) > 6 and item[6] else 0
+                            open_price = float(item[1]) if len(item) > 1 and item[1] else 0.0
+                            high_price = float(item[2]) if len(item) > 2 and item[2] else 0.0
+                            low_price = float(item[3]) if len(item) > 3 and item[3] else 0.0
+                            close_price = float(item[4]) if len(item) > 4 and item[4] else 0.0
+                            volume = float(item[5]) if len(item) > 5 and item[5] else 0.0
+                            trades = int(float(item[8])) if len(item) > 8 and item[8] else 0
+                        except (ValueError, TypeError, IndexError) as e:
+                            logger.warning(f"Error parsing Binance candle values at index {idx}: {e}")
+                            continue
                         
                         # Validate price data
                         if not (open_price > 0 and high_price > 0 and low_price > 0 and close_price > 0):
@@ -251,23 +255,32 @@ class DataManager:
     
     def _interval_to_ms(self, interval: str) -> int:
         """Convert interval string to milliseconds."""
-        if interval.endswith("m"):
-            minutes = int(interval[:-1])
-            return minutes * 60 * 1000
-        elif interval.endswith("h"):
-            hours = int(interval[:-1])
-            return hours * 60 * 60 * 1000
-        elif interval.endswith("d"):
-            days = int(interval[:-1])
-            return days * 24 * 60 * 60 * 1000
-        elif interval == "D":
-            return 24 * 60 * 60 * 1000
-        elif interval == "W":
-            return 7 * 24 * 60 * 60 * 1000
-        elif interval == "M":
-            return 30 * 24 * 60 * 60 * 1000
-        else:
-            # Default to 5 minutes
+        try:
+            if not interval or not isinstance(interval, str):
+                return 5 * 60 * 1000  # Default to 5 minutes
+            
+            interval = interval.strip()
+            
+            if interval.endswith("m"):
+                minutes = int(interval[:-1])
+                return max(1, minutes) * 60 * 1000  # Ensure positive
+            elif interval.endswith("h"):
+                hours = int(interval[:-1])
+                return max(1, hours) * 60 * 60 * 1000
+            elif interval.endswith("d"):
+                days = int(interval[:-1])
+                return max(1, days) * 24 * 60 * 60 * 1000
+            elif interval == "D":
+                return 24 * 60 * 60 * 1000
+            elif interval == "W":
+                return 7 * 24 * 60 * 60 * 1000
+            elif interval == "M":
+                return 30 * 24 * 60 * 60 * 1000
+            else:
+                # Default to 5 minutes
+                return 5 * 60 * 1000
+        except (ValueError, TypeError, AttributeError):
+            # Safe fallback
             return 5 * 60 * 1000
     
     def fetch_all_historical_data(self) -> Dict[str, List[Dict]]:

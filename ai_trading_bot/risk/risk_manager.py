@@ -42,22 +42,69 @@ class RiskManager:
         # Fees
         self.fee_rate = 0.001  # 0.1% per side
     
-    def can_open_position(self) -> bool:
+    def _calculate_current_equity(self, current_prices: Dict[str, float] = None) -> float:
+        """
+        Calculate current equity including unrealized PnL from open positions.
+        
+        Args:
+            current_prices: Dictionary of symbol -> current price (optional)
+        
+        Returns:
+            Current equity (capital + unrealized PnL)
+        """
+        equity = self.current_capital
+        
+        # Add unrealized PnL from open positions
+        for symbol, position in self.open_positions.items():
+            entry_price = position.get("entry_price", 0)
+            size = position.get("size", 0)
+            action = position.get("action", "FLAT")
+            entry_cost = position.get("entry_cost", entry_price * size)
+            entry_fee = position.get("entry_fee", entry_price * size * self.fee_rate)
+            
+            # Get current price (if not provided, use entry price as approximation)
+            current_price = current_prices.get(symbol, entry_price) if current_prices else entry_price
+            
+            # Calculate unrealized PnL
+            # Note: Entry cost and entry fee were already deducted from capital
+            # So we only calculate price movement PnL (exit fee will be deducted on close)
+            if action == "LONG":
+                unrealized_pnl = (current_price - entry_price) * size
+            elif action == "SHORT":
+                unrealized_pnl = (entry_price - current_price) * size
+            else:
+                unrealized_pnl = 0.0
+            
+            equity += unrealized_pnl
+        
+        return equity
+    
+    def can_open_position(self, current_prices: Dict[str, float] = None) -> bool:
         """
         Check if a new position can be opened.
+        
+        Args:
+            current_prices: Dictionary of symbol -> current price (for accurate equity calculation)
         
         Returns:
             True if position can be opened
         """
         try:
-            # Check drawdown
+            # Calculate current equity (including unrealized PnL)
+            current_equity = self._calculate_current_equity(current_prices)
+            
+            # Update peak capital if equity increased
+            if current_equity > self.peak_capital:
+                self.peak_capital = current_equity
+            
+            # Check drawdown based on equity (not just capital)
             if self.peak_capital <= 0:
                 logger.warning("Invalid peak capital")
                 return False
             
-            drawdown_pct = ((self.peak_capital - self.current_capital) / self.peak_capital) * 100
+            drawdown_pct = ((self.peak_capital - current_equity) / self.peak_capital) * 100
             if drawdown_pct >= self.max_drawdown_pct:
-                logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {self.max_drawdown_pct}%")
+                logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {self.max_drawdown_pct}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
                 return False
             
             # Check daily loss
@@ -273,16 +320,22 @@ class RiskManager:
         return self.trade_history.copy()
     
     def get_current_capital(self) -> float:
-        """Get current capital."""
+        """Get current capital (excluding unrealized PnL)."""
         return self.current_capital
     
-    def get_total_pnl(self) -> float:
-        """Get total P&L."""
-        return self.current_capital - self.initial_capital
+    def get_current_equity(self, current_prices: Dict[str, float] = None) -> float:
+        """Get current equity (capital + unrealized PnL)."""
+        return self._calculate_current_equity(current_prices)
     
-    def get_drawdown_pct(self) -> float:
-        """Get current drawdown percentage."""
-        if self.peak_capital == 0:
+    def get_total_pnl(self, current_prices: Dict[str, float] = None) -> float:
+        """Get total P&L (realized + unrealized)."""
+        equity = self._calculate_current_equity(current_prices)
+        return equity - self.initial_capital
+    
+    def get_drawdown_pct(self, current_prices: Dict[str, float] = None) -> float:
+        """Get current drawdown percentage based on equity."""
+        current_equity = self._calculate_current_equity(current_prices)
+        if self.peak_capital <= 0:
             return 0.0
-        return ((self.peak_capital - self.current_capital) / self.peak_capital) * 100
+        return ((self.peak_capital - current_equity) / self.peak_capital) * 100
 

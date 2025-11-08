@@ -215,16 +215,28 @@ class BybitWebSocketClient:
                     open_time = int(float(start_val)) if start_val else 0
                     close_time = int(float(end_val)) if end_val else 0
                     
-                    candle = {
-                        "open_time": open_time,
-                        "close_time": close_time,
-                        "open": float(kline.get("open", 0)),
-                        "high": float(kline.get("high", 0)),
-                        "low": float(kline.get("low", 0)),
-                        "close": float(kline.get("close", 0)),
-                        "volume": float(kline.get("volume", 0)),
-                        "trades": int(float(kline.get("turnover", 0))) if kline.get("turnover") else 0
-                    }
+                    # Safe type conversion with error handling
+                    try:
+                        open_val = kline.get("open", 0) or 0
+                        high_val = kline.get("high", 0) or 0
+                        low_val = kline.get("low", 0) or 0
+                        close_val = kline.get("close", 0) or 0
+                        volume_val = kline.get("volume", 0) or 0
+                        turnover_val = kline.get("turnover", 0) or 0
+                        
+                        candle = {
+                            "open_time": open_time,
+                            "close_time": close_time,
+                            "open": float(open_val),
+                            "high": float(high_val),
+                            "low": float(low_val),
+                            "close": float(close_val),
+                            "volume": float(volume_val),
+                            "trades": int(float(turnover_val)) if turnover_val else 0
+                        }
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Error converting Bybit kline values to numbers: {e}")
+                        return
                     
                     # Validate candle data
                     if not (candle["open"] > 0 and candle["high"] > 0 and 
