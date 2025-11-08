@@ -599,6 +599,10 @@ class TradingBot:
                 else:
                     logger.warning(f"Invalid current price for {symbol}: {current_price}")
             
+            # Update position allocator capital BEFORE calculating position size
+            # This ensures position size is calculated based on current capital, not stale capital
+            self.position_allocator.update_capital(self.risk_manager.get_current_capital())
+            
             # Calculate position size first (to estimate cost)
             current_price = market_data.get("current_price", signal.get("entry_price", 0))
             position_size = self.position_allocator.calculate_position_size(signal, current_price)
@@ -633,7 +637,8 @@ class TradingBot:
             peak_capital = self.risk_manager.peak_capital
             if peak_capital > 0:
                 simulated_drawdown = ((peak_capital - simulated_equity_after_position) / peak_capital) * 100
-                max_drawdown = self.risk_manager.max_drawdown_pct - 0.1  # Use buffer
+                simulated_drawdown = round(simulated_drawdown, 2)  # Round for consistency
+                max_drawdown = round(self.risk_manager.max_drawdown_pct - 0.1, 2)  # Use buffer, rounded
                 
                 if simulated_drawdown >= max_drawdown:
                     logger.warning(f"Opening position would exceed drawdown limit: {simulated_drawdown:.2f}% >= {max_drawdown:.2f}% (current equity: ${current_equity:.2f}, after position: ${simulated_equity_after_position:.2f})")
@@ -666,6 +671,9 @@ class TradingBot:
                 }
                 
                 if self.risk_manager.open_position(symbol, position):
+                    # Update position allocator capital immediately after opening position
+                    self.position_allocator.update_capital(self.risk_manager.get_current_capital())
+                    
                     logger.info(f"📈 Position opened: {symbol} {signal['action']} {position_size:.6f} @ ${execution['executed_price']:.2f} | "
                                f"Cost: ${execution.get('total_cost', 0):.4f} (fees: ${execution.get('fees', 0):.4f})")
                     # Note: Trade will be saved when position closes

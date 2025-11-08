@@ -104,9 +104,12 @@ class RiskManager:
             
             drawdown_pct = ((self.peak_capital - current_equity) / self.peak_capital) * 100
             
+            # Round to 2 decimal places to avoid floating point precision issues
+            drawdown_pct = round(drawdown_pct, 2)
+            
             # Add small buffer (0.1%) to prevent hitting limit exactly due to floating point precision
             # This prevents opening positions that would push us exactly to the limit
-            drawdown_threshold = self.max_drawdown_pct - 0.1
+            drawdown_threshold = round(self.max_drawdown_pct - 0.1, 2)
             
             if drawdown_pct >= drawdown_threshold:
                 logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {drawdown_threshold:.2f}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
@@ -342,5 +345,7 @@ class RiskManager:
         current_equity = self._calculate_current_equity(current_prices)
         if self.peak_capital <= 0:
             return 0.0
-        return ((self.peak_capital - current_equity) / self.peak_capital) * 100
+        drawdown_pct = ((self.peak_capital - current_equity) / self.peak_capital) * 100
+        # Round to 2 decimal places for consistency
+        return round(drawdown_pct, 2)
 
