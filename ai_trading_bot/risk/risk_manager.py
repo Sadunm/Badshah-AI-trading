@@ -112,7 +112,8 @@ class RiskManager:
             drawdown_threshold = round(self.max_drawdown_pct - 0.1, 2)
             
             if drawdown_pct >= drawdown_threshold:
-                logger.warning(f"Max drawdown reached: {drawdown_pct:.2f}% >= {drawdown_threshold:.2f}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
+                # Only log as debug - this is expected behavior when protecting capital
+                logger.debug(f"Max drawdown reached: {drawdown_pct:.2f}% >= {drawdown_threshold:.2f}% (equity: ${current_equity:.2f}, peak: ${self.peak_capital:.2f})")
                 return False
             
             # Check daily loss

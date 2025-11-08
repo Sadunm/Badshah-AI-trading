@@ -608,7 +608,7 @@ class TradingBot:
             position_size = self.position_allocator.calculate_position_size(signal, current_price)
             
             if position_size is None or position_size <= 0:
-                logger.warning(f"Invalid position size for {symbol}")
+                logger.debug(f"Invalid position size for {symbol} - skipping")
                 return
             
             # Estimate position cost (entry price + fees) to check if we can afford it
@@ -624,7 +624,7 @@ class TradingBot:
             # Check if we have enough capital
             available_capital = self.risk_manager.get_current_capital()
             if available_capital < estimated_total_cost:
-                logger.warning(f"Insufficient capital for {symbol}: ${available_capital:.2f} < ${estimated_total_cost:.4f}")
+                logger.debug(f"Insufficient capital for {symbol}: ${available_capital:.2f} < ${estimated_total_cost:.4f}")
                 return
             
             # Simulate opening position to check if it would exceed drawdown
@@ -641,12 +641,12 @@ class TradingBot:
                 max_drawdown = round(self.risk_manager.max_drawdown_pct - 0.1, 2)  # Use buffer, rounded
                 
                 if simulated_drawdown >= max_drawdown:
-                    logger.warning(f"Opening position would exceed drawdown limit: {simulated_drawdown:.2f}% >= {max_drawdown:.2f}% (current equity: ${current_equity:.2f}, after position: ${simulated_equity_after_position:.2f})")
+                    logger.debug(f"Opening position for {symbol} would exceed drawdown limit: {simulated_drawdown:.2f}% >= {max_drawdown:.2f}% - skipping")
                     return
             
             # Now check risk limits with current prices for accurate equity calculation
             if not self.risk_manager.can_open_position(current_prices):
-                logger.warning("Cannot open position - risk limits reached")
+                logger.debug(f"Cannot open position for {symbol} - risk limits reached")
                 return
             
             # Execute order

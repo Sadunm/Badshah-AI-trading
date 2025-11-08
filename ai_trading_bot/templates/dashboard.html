@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Badshah AI Trading Bot - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .status-running {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status-stopped {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .status-starting {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-value.positive {
+            color: #10b981;
+        }
+        
+        .stat-value.negative {
+            color: #ef4444;
+        }
+        
+        .positions-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .positions-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .positions-table th,
+        .positions-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .positions-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .positions-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-long {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge-short {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .trades-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .trades-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .trades-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .trades-table th,
+        .trades-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .trades-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Badshah AI Trading Bot</h1>
+            <p>Real-time Trading Dashboard</p>
+            <span class="status-badge" id="botStatus">Starting...</span>
+        </div>
+        
+        <div class="auto-refresh">
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <label>
+                <input type="checkbox" id="autoRefresh" checked onchange="toggleAutoRefresh()">
+                Auto-refresh every 5 seconds
+            </label>
+        </div>
+        
+        <div id="errorMessage" class="error" style="display: none;"></div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Current Capital</h3>
+                <div class="stat-value" id="currentCapital">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total P&L</h3>
+                <div class="stat-value" id="totalPnl">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total P&L %</h3>
+                <div class="stat-value" id="totalPnlPct">0.00%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Equity</h3>
+                <div class="stat-value" id="equity">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Drawdown</h3>
+                <div class="stat-value" id="drawdown">0.00%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Open Positions</h3>
+                <div class="stat-value" id="openPositions">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Trades</h3>
+                <div class="stat-value" id="totalTrades">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Win Rate</h3>
+                <div class="stat-value" id="winRate">0.00%</div>
+            </div>
+        </div>
+        
+        <div class="positions-section">
+            <h2>📊 Open Positions</h2>
+            <div id="positionsContent">
+                <div class="loading">Loading positions...</div>
+            </div>
+        </div>
+        
+        <div class="trades-section">
+            <h2>📈 Recent Trades</h2>
+            <div id="tradesContent">
+                <div class="loading">Loading trades...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let autoRefreshInterval = null;
+        
+        function toggleAutoRefresh() {
+            const checkbox = document.getElementById('autoRefresh');
+            if (checkbox.checked) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        }
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(refreshData, 5000);
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        async function refreshData() {
+            try {
+                hideError();
+                
+                // Fetch status
+                const statusResponse = await fetch('/api/status');
+                const statusData = await statusResponse.json();
+                
+                // Update bot status
+                const statusBadge = document.getElementById('botStatus');
+                if (statusData.bot_running) {
+                    statusBadge.textContent = '🟢 Running';
+                    statusBadge.className = 'status-badge status-running';
+                } else {
+                    statusBadge.textContent = '🟡 Starting';
+                    statusBadge.className = 'status-badge status-starting';
+                }
+                
+                // Update stats
+                if (statusData.capital !== undefined) {
+                    document.getElementById('currentCapital').textContent = `$${statusData.capital.toFixed(2)}`;
+                }
+                if (statusData.equity !== undefined) {
+                    document.getElementById('equity').textContent = `$${statusData.equity.toFixed(2)}`;
+                }
+                if (statusData.pnl !== undefined) {
+                    const pnl = statusData.pnl;
+                    const pnlElement = document.getElementById('totalPnl');
+                    pnlElement.textContent = `$${pnl.toFixed(2)}`;
+                    pnlElement.className = 'stat-value ' + (pnl >= 0 ? 'positive' : 'negative');
+                }
+                if (statusData.pnl_pct !== undefined) {
+                    const pnlPct = statusData.pnl_pct;
+                    const pnlPctElement = document.getElementById('totalPnlPct');
+                    pnlPctElement.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
+                    pnlPctElement.className = 'stat-value ' + (pnlPct >= 0 ? 'positive' : 'negative');
+                }
+                if (statusData.drawdown !== undefined) {
+                    document.getElementById('drawdown').textContent = `${statusData.drawdown.toFixed(2)}%`;
+                }
+                if (statusData.open_positions_count !== undefined) {
+                    document.getElementById('openPositions').textContent = statusData.open_positions_count;
+                }
+                
+                // Fetch PnL data
+                const pnlResponse = await fetch('/pnl');
+                const pnlData = await pnlResponse.json();
+                
+                if (pnlData.status === 'ok') {
+                    document.getElementById('totalTrades').textContent = pnlData.total_trades || 0;
+                    document.getElementById('winRate').textContent = `${(pnlData.win_rate || 0).toFixed(2)}%`;
+                }
+                
+                // Fetch positions
+                const positionsResponse = await fetch('/api/positions');
+                const positionsData = await positionsResponse.json();
+                
+                if (positionsData.status === 'ok' && positionsData.positions) {
+                    displayPositions(positionsData.positions);
+                } else {
+                    document.getElementById('positionsContent').innerHTML = '<div class="no-data">No open positions</div>';
+                }
+                
+                // Fetch trades
+                const tradesResponse = await fetch('/trades');
+                const tradesData = await tradesResponse.json();
+                
+                if (tradesData.status === 'ok' && tradesData.recent_trades) {
+                    displayTrades(tradesData.recent_trades);
+                } else {
+                    document.getElementById('tradesContent').innerHTML = '<div class="no-data">No trades yet</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError('Error loading data: ' + error.message);
+            }
+        }
+        
+        function displayPositions(positions) {
+            if (!positions || positions.length === 0) {
+                document.getElementById('positionsContent').innerHTML = '<div class="no-data">No open positions</div>';
+                return;
+            }
+            
+            const html = `
+                <table class="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Action</th>
+                            <th>Size</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>Unrealized P&L</th>
+                            <th>Unrealized P&L %</th>
+                            <th>Stop Loss</th>
+                            <th>Take Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${positions.map(pos => `
+                            <tr>
+                                <td><strong>${pos.symbol}</strong></td>
+                                <td><span class="badge badge-${pos.action.toLowerCase()}">${pos.action}</span></td>
+                                <td>${parseFloat(pos.size).toFixed(6)}</td>
+                                <td>$${parseFloat(pos.entry_price).toFixed(2)}</td>
+                                <td>$${parseFloat(pos.current_price || pos.entry_price).toFixed(2)}</td>
+                                <td class="${(pos.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'}">
+                                    $${(pos.unrealized_pnl || 0).toFixed(4)}
+                                </td>
+                                <td class="${(pos.unrealized_pnl_pct || 0) >= 0 ? 'positive' : 'negative'}">
+                                    ${(pos.unrealized_pnl_pct || 0) >= 0 ? '+' : ''}${(pos.unrealized_pnl_pct || 0).toFixed(2)}%
+                                </td>
+                                <td>$${parseFloat(pos.stop_loss || 0).toFixed(2)}</td>
+                                <td>$${parseFloat(pos.take_profit || 0).toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('positionsContent').innerHTML = html;
+        }
+        
+        function displayTrades(trades) {
+            if (!trades || trades.length === 0) {
+                document.getElementById('tradesContent').innerHTML = '<div class="no-data">No trades yet</div>';
+                return;
+            }
+            
+            // Reverse to show newest first
+            const reversedTrades = [...trades].reverse();
+            
+            const html = `
+                <table class="trades-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Action</th>
+                            <th>Size</th>
+                            <th>Entry Price</th>
+                            <th>Exit Price</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reversedTrades.map(trade => {
+                            const pnl = parseFloat(trade.net_pnl || 0);
+                            const pnlPct = parseFloat(trade.pnl_pct || 0);
+                            const timestamp = new Date(trade.timestamp * 1000).toLocaleString();
+                            return `
+                                <tr>
+                                    <td>${timestamp}</td>
+                                    <td><strong>${trade.symbol}</strong></td>
+                                    <td><span class="badge badge-${trade.action.toLowerCase()}">${trade.action}</span></td>
+                                    <td>${parseFloat(trade.size || 0).toFixed(6)}</td>
+                                    <td>$${parseFloat(trade.entry_price || 0).toFixed(2)}</td>
+                                    <td>$${parseFloat(trade.exit_price || 0).toFixed(2)}</td>
+                                    <td class="${pnl >= 0 ? 'positive' : 'negative'}">
+                                        $${pnl.toFixed(4)}
+                                    </td>
+                                    <td class="${pnlPct >= 0 ? 'positive' : 'negative'}">
+                                        ${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%
+                                    </td>
+                                    <td>${trade.reason || 'N/A'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('tradesContent').innerHTML = html;
+        }
+        
+        // Initialize
+        refreshData();
+        if (document.getElementById('autoRefresh').checked) {
+            startAutoRefresh();
+        }
+    </script>
+</body>
+</html>
+
